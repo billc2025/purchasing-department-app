@@ -2,33 +2,47 @@
 
 Purchasing Hub is an internal purchasing-request and fulfillment system for fewer than 50 users. Employees submit multi-item orders, purchasing agents claim and fulfill work, receptionists record receipt, requesters confirm outcomes, and administrators manage configuration and reporting. Reliability, server-enforced permissions, traceability, and ease of use take priority over feature breadth.
 
-This repository currently contains the application scaffold and **Phase 0 architecture only**. Product workflows begin in Phase 1 after explicit approval. The controlling specification is [`Purchasing_Hub_Codex_Build_Package.md`](Purchasing_Hub_Codex_Build_Package.md).
+This repository contains the approved Phase 0 architecture and the Phase 1 authentication/authorization foundation. Product purchasing workflows begin in Phase 2 only after explicit approval. The controlling specification is [`Purchasing_Hub_Codex_Build_Package.md`](Purchasing_Hub_Codex_Build_Package.md).
 
 ## Approved stack
 
-| Area | Choice |
-| --- | --- |
-| Web | Next.js 16.3.1 App Router, React 19.2.8, strict TypeScript 5 |
-| UI | Tailwind CSS 4, shadcn/ui 4.18.0 |
-| Authentication | Clerk, invitation-only |
-| Backend, database, real time | Convex queries, mutations, actions, and subscriptions |
-| Files | Convex File Storage initially |
-| Validation | Convex validators at backend boundaries; Zod where appropriate |
-| Tests | Vitest and Playwright |
-| Delivery | GitHub Actions and Vercel |
+| Area                         | Choice                                                         |
+| ---------------------------- | -------------------------------------------------------------- |
+| Web                          | Next.js 16.3.1 App Router, React 19.2.8, strict TypeScript 5   |
+| UI                           | Tailwind CSS 4, shadcn/ui 4.18.0                               |
+| Authentication               | Clerk, invitation-only                                         |
+| Backend, database, real time | Convex queries, mutations, actions, and subscriptions          |
+| Files                        | Convex File Storage initially                                  |
+| Validation                   | Convex validators at backend boundaries; Zod where appropriate |
+| Tests                        | Vitest and Playwright                                          |
+| Delivery                     | GitHub Actions and Vercel                                      |
 
-Clerk, Convex, Vitest, and Playwright are approved architectural dependencies but are intentionally not installed or configured until their implementation phases. No Express API, PostgreSQL, Prisma, or parallel backend is planned.
+Clerk, Convex, Zod, and Vitest are installed for Phase 1. Playwright remains a Phase 8 dependency. No Express API, PostgreSQL, Prisma, or parallel backend is planned.
 
 ## Local setup outline
 
-Prerequisites are Node.js 20 or newer and npm. Phase 1 will confirm the exact supported runtime and add service-specific setup.
+Prerequisites are Node.js 20 or newer and npm.
 
 ```bash
 npm install
+npm run typecheck
+npm test
 npm run dev
 ```
 
-The scaffold is then available at `http://localhost:3000`. No external service is configured in Phase 0.
+The application is then available at `http://localhost:3000`. Without service values it renders a safe setup-required state instead of attempting authentication.
+
+## Clerk and Convex development setup
+
+1. Create a Clerk development application and disable public sign-up. Provision users by invitation only.
+2. Activate Clerk's Convex integration and note the Clerk issuer/frontend API domain.
+3. Run `npx convex dev` and select/create the Purchasing Hub development project. This replaces the pre-deployment API bridge with official typed files under `convex/_generated` and sets `CONVEX_DEPLOYMENT` locally.
+4. In the Convex development deployment, set `CLERK_JWT_ISSUER_DOMAIN`, `CLERK_WEBHOOK_SIGNING_SECRET`, and `OVERLORD_CLERK_USER_ID` with `npx convex env set`. Do not prefix them with `NEXT_PUBLIC_`.
+5. Copy `.env.example` to `.env.local` and provide only the development values. Never commit `.env.local`.
+6. Configure `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in` and ensure no sign-up route or self-service registration is enabled.
+7. Configure Clerk `user.created` and `user.updated` events to the deployed Convex `/clerk-webhook` HTTP endpoint. The signature-verified handler provisions new invited users as requesters and preserves existing server-controlled roles. Unknown identities fail closed with `ACCOUNT_NOT_PROVISIONED`.
+
+The first Overlord identity is matched exclusively against the protected Convex deployment value. Its stored visible role remains an ordinary role-shaped value so the hidden role is absent from ordinary schemas and client role lists.
 
 ## Environment-variable names
 
@@ -41,6 +55,7 @@ Values must be different for development, preview, and production and must never
 - `CONVEX_DEPLOYMENT`
 - `NEXT_PUBLIC_APP_URL`
 - `OVERLORD_CLERK_USER_ID`
+- `CLERK_JWT_ISSUER_DOMAIN`
 - `APP_ENV`
 
 Only variables deliberately prefixed with `NEXT_PUBLIC_` may be exposed to the browser. Clerk secrets, Convex deployment credentials, webhook secrets, and the Overlord bootstrap identity are server-only.
@@ -55,7 +70,10 @@ Only variables deliberately prefixed with `NEXT_PUBLIC_` may be exposed to the b
 
 ## Current constraints
 
-- Phase 0 contains no product features, Clerk tenant, Convex deployment, Vercel project, or CI workflow.
+- Phase 1 provides foundations and placeholder dashboards only; Clerk tenant, Convex deployment, Vercel project, and CI remain unconfigured externally.
 - Production categories, budget thresholds, budget enforcement, cancellation authority after purchase, and edit cutoffs remain explicit configuration/future decisions.
 - The hidden Overlord is a server-resolved capability and must never appear in ordinary role/user APIs or client bundles.
 
+## Overlord bootstrap recovery
+
+For development or production rotation, an existing authorized system owner updates `OVERLORD_CLERK_USER_ID` in the matching Convex deployment, runs the protected reconciliation procedure, confirms the new identity, and records an audit event before retiring the prior Clerk account. Until the protected reconciliation command is implemented and tested with an authorized deployment, recovery is a release blocker and must not be approximated through ordinary user management.
