@@ -23,8 +23,16 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
     en: {
       title: "Processing workspace",
       loading: "Loading processing workspace…",
-      subtitle:
-        "Status changes, purchasing records, and discussions are preserved in the audit history.",
+      subtitle: "Complete the highlighted next step below.",
+      nextStep: "Next step",
+      itemsRemaining: "items still need review",
+      readyToApprove:
+        "All items are resolved and ready for purchasing approval.",
+      waitingForRequester:
+        "Waiting for the requester to answer an information request.",
+      recordPurchaseNext: "Record the purchase and attach the receipt below.",
+      dispatchNext:
+        "Mark purchased items in transit when the vendor ships them.",
       billing: "Billing responsibility",
       client: "Client",
       internal: "Internal cost",
@@ -41,6 +49,7 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
       requestInfo: "Request information",
       unavailable: "Mark unavailable",
       substitute: "Record substitution",
+      moreActions: "Other item action…",
       dispatch: "Mark in transit",
       question: "Question for the requester",
       reason: "Reason",
@@ -50,6 +59,7 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
       approvePurchasing: "Approve for purchasing",
       beginPurchasing: "Begin purchasing",
       discussions: "Order discussions",
+      discussionsHelp: "Open comments and internal notes",
       shared: "Shared comments",
       sharedHelp:
         "Visible to the requester, reception, purchasing, and administrators.",
@@ -74,6 +84,7 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
       proofReason: "Required proof-exception reason",
       finalize: "Finalize purchase",
       transactions: "Purchase history",
+      transactionsHelp: "Open previous purchase records",
       proofAttached: "Receipt attached",
       exceptionUsed: "Proof exception used",
       noTransactions: "No purchase transactions yet.",
@@ -89,8 +100,16 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
     es: {
       title: "Espacio de procesamiento",
       loading: "Cargando espacio de procesamiento…",
-      subtitle:
-        "Los cambios de estado, compras y conversaciones se conservan en el historial de auditoría.",
+      subtitle: "Complete el siguiente paso resaltado abajo.",
+      nextStep: "Siguiente paso",
+      itemsRemaining: "artículos aún necesitan revisión",
+      readyToApprove:
+        "Todos los artículos están resueltos y listos para aprobar la compra.",
+      waitingForRequester:
+        "Esperando la respuesta del solicitante a una solicitud de información.",
+      recordPurchaseNext: "Registre la compra y adjunte el recibo abajo.",
+      dispatchNext:
+        "Marque los artículos comprados en tránsito cuando el proveedor los envíe.",
       billing: "Responsabilidad de facturación",
       client: "Cliente",
       internal: "Costo interno",
@@ -107,6 +126,7 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
       requestInfo: "Solicitar información",
       unavailable: "Marcar no disponible",
       substitute: "Registrar sustitución",
+      moreActions: "Otra acción del artículo…",
       dispatch: "Marcar en tránsito",
       question: "Pregunta para el solicitante",
       reason: "Motivo",
@@ -116,6 +136,7 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
       approvePurchasing: "Aprobar para compra",
       beginPurchasing: "Iniciar compra",
       discussions: "Conversaciones del pedido",
+      discussionsHelp: "Abrir comentarios y notas internas",
       shared: "Comentarios compartidos",
       sharedHelp:
         "Visibles para el solicitante, recepción, compras y administradores.",
@@ -140,6 +161,7 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
       proofReason: "Motivo obligatorio de la excepción",
       finalize: "Finalizar compra",
       transactions: "Historial de compras",
+      transactionsHelp: "Abrir registros de compras anteriores",
       proofAttached: "Comprobante adjunto",
       exceptionUsed: "Se usó una excepción de comprobante",
       noTransactions: "Aún no hay transacciones de compra.",
@@ -348,6 +370,10 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
     ["purchasing", "partially_fulfilled"].includes(order.status) &&
     (workspace.permissions.canProcess ||
       workspace.permissions.canUseProofException);
+  const unresolvedItems = workspace.items.filter(
+    (item) => !["approved", "substituted", "unavailable"].includes(item.status),
+  );
+  const reviewComplete = unresolvedItems.length === 0;
 
   return (
     <section className="mx-auto mt-6 max-w-4xl space-y-6">
@@ -386,39 +412,75 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
           </div>
         </dl>
 
-        {workspace.permissions.canProcess && order.status === "assigned" && (
-          <Button
-            className="mt-5"
-            disabled={busy}
-            onClick={() =>
-              void run(() => startReview({ orderId: orderId as never }))
-            }
-          >
-            {c.startReview}
-          </Button>
-        )}
-        {workspace.permissions.canProcess && order.status === "in_review" && (
-          <Button
-            className="mt-5"
-            disabled={busy}
-            onClick={() =>
-              void run(() => approveForPurchase({ orderId: orderId as never }))
-            }
-          >
-            {c.approvePurchasing}
-          </Button>
-        )}
         {workspace.permissions.canProcess &&
-          order.status === "approved_to_purchase" && (
-            <Button
-              className="mt-5"
-              disabled={busy}
-              onClick={() =>
-                void run(() => beginPurchasing({ orderId: orderId as never }))
-              }
-            >
-              {c.beginPurchasing}
-            </Button>
+          [
+            "assigned",
+            "in_review",
+            "waiting_for_requester",
+            "approved_to_purchase",
+            "purchasing",
+            "partially_fulfilled",
+            "purchased",
+          ].includes(order.status) && (
+            <div className="mt-5 rounded-xl border-2 border-primary/30 bg-primary/5 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                {c.nextStep}
+              </p>
+              {order.status === "assigned" && (
+                <Button
+                  className="mt-2 h-11 w-full sm:w-auto"
+                  disabled={busy}
+                  onClick={() =>
+                    void run(() => startReview({ orderId: orderId as never }))
+                  }
+                >
+                  {c.startReview}
+                </Button>
+              )}
+              {order.status === "in_review" && !reviewComplete && (
+                <p className="mt-2 font-medium">
+                  {unresolvedItems.length} {c.itemsRemaining}
+                </p>
+              )}
+              {order.status === "in_review" && reviewComplete && (
+                <>
+                  <p className="mt-2 text-sm">{c.readyToApprove}</p>
+                  <Button
+                    className="mt-3 h-11 w-full sm:w-auto"
+                    disabled={busy}
+                    onClick={() =>
+                      void run(() =>
+                        approveForPurchase({ orderId: orderId as never }),
+                      )
+                    }
+                  >
+                    {c.approvePurchasing}
+                  </Button>
+                </>
+              )}
+              {order.status === "waiting_for_requester" && (
+                <p className="mt-2 font-medium">{c.waitingForRequester}</p>
+              )}
+              {order.status === "approved_to_purchase" && (
+                <Button
+                  className="mt-2 h-11 w-full sm:w-auto"
+                  disabled={busy}
+                  onClick={() =>
+                    void run(() =>
+                      beginPurchasing({ orderId: orderId as never }),
+                    )
+                  }
+                >
+                  {c.beginPurchasing}
+                </Button>
+              )}
+              {["purchasing", "partially_fulfilled"].includes(order.status) && (
+                <p className="mt-2 font-medium">{c.recordPurchaseNext}</p>
+              )}
+              {order.status === "purchased" && (
+                <p className="mt-2 font-medium">{c.dispatchNext}</p>
+              )}
+            </div>
           )}
       </div>
 
@@ -455,7 +517,7 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
                   {order.status === "in_review" &&
                     item.status === "requested" && (
                       <Button
-                        size="sm"
+                        className="h-10 w-full sm:w-auto"
                         disabled={busy}
                         onClick={() =>
                           void run(() => beginItemReview({ itemId: item._id }))
@@ -468,7 +530,7 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
                     item.status === "under_review" && (
                       <>
                         <Button
-                          size="sm"
+                          className="h-10 flex-1 sm:flex-none"
                           disabled={busy}
                           onClick={() =>
                             void run(() => approveItem({ itemId: item._id }))
@@ -476,42 +538,26 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
                         >
                           {c.approve}
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            setItemAction({
-                              itemId: item._id,
-                              action: "information",
-                            })
-                          }
-                        >
-                          {c.requestInfo}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            setItemAction({
-                              itemId: item._id,
-                              action: "unavailable",
-                            })
-                          }
-                        >
-                          {c.unavailable}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            setItemAction({
-                              itemId: item._id,
-                              action: "substitution",
-                            })
-                          }
-                        >
-                          {c.substitute}
-                        </Button>
+                        <label className="flex-1 sm:flex-none">
+                          <span className="sr-only">{c.moreActions}</span>
+                          <select
+                            aria-label={c.moreActions}
+                            className="h-10 w-full rounded-md border bg-background px-3 text-sm sm:w-auto"
+                            value=""
+                            onChange={(event) => {
+                              if (!event.target.value) return;
+                              setItemAction({
+                                itemId: item._id,
+                                action: event.target.value as ItemAction,
+                              });
+                            }}
+                          >
+                            <option value="">{c.moreActions}</option>
+                            <option value="information">{c.requestInfo}</option>
+                            <option value="unavailable">{c.unavailable}</option>
+                            <option value="substitution">{c.substitute}</option>
+                          </select>
+                        </label>
                       </>
                     )}
                   {order.status === "waiting_for_requester" &&
@@ -593,8 +639,13 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
         </div>
       </div>
 
-      <div className="rounded-2xl border bg-card p-5 sm:p-8">
-        <h3 className="font-semibold">{c.discussions}</h3>
+      <details className="rounded-2xl border bg-card p-5 sm:p-8">
+        <summary className="cursor-pointer list-none">
+          <span className="font-semibold">{c.discussions}</span>
+          <span className="mt-1 block text-sm text-muted-foreground">
+            {c.discussionsHelp}
+          </span>
+        </summary>
         <div className="mt-4 grid gap-5 lg:grid-cols-2">
           {(["shared", "internal"] as const).map((channel) => {
             if (
@@ -655,7 +706,7 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
             );
           })}
         </div>
-      </div>
+      </details>
 
       {canRecordPurchase && (
         <div className="rounded-2xl border bg-card p-5 sm:p-8">
@@ -839,8 +890,13 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
         </div>
       )}
 
-      <div className="rounded-2xl border bg-card p-5 sm:p-8">
-        <h3 className="font-semibold">{c.transactions}</h3>
+      <details className="rounded-2xl border bg-card p-5 sm:p-8">
+        <summary className="cursor-pointer list-none">
+          <span className="font-semibold">{c.transactions}</span>
+          <span className="mt-1 block text-sm text-muted-foreground">
+            {c.transactionsHelp}
+          </span>
+        </summary>
         <div className="mt-4 space-y-3">
           {workspace.transactions.length === 0 && (
             <p className="text-sm text-muted-foreground">{c.noTransactions}</p>
@@ -895,7 +951,7 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
             </article>
           ))}
         </div>
-      </div>
+      </details>
 
       {message && (
         <p className="rounded-md border bg-card p-3 text-sm" role="status">
