@@ -4,7 +4,7 @@ Purchasing Hub is an internal purchasing-request and fulfillment system for fewe
 
 Each order also records who ultimately bears its cost: the identified client is billed, or the organization absorbs it internally. This classification is required at order entry and protected from silent reclassification after submission.
 
-This repository contains the approved architecture, Phase 1 authentication/authorization foundation, Phase 2 order-entry workflow, and Phase 3 real-time purchasing bucket. The controlling specification is [`Purchasing_Hub_Codex_Build_Package.md`](Purchasing_Hub_Codex_Build_Package.md).
+This repository contains the approved architecture, Phase 1 authentication/authorization foundation, Phase 2 order-entry workflow, Phase 3 real-time purchasing bucket, and Phase 4 processing/receipt workflow. The controlling specification is [`Purchasing_Hub_Codex_Build_Package.md`](Purchasing_Hub_Codex_Build_Package.md).
 
 ## Approved stack
 
@@ -61,6 +61,12 @@ Receptionists, purchasing agents, administrators, Super Admins, and the protecte
 Priority is deterministic: overdue active work, late/exception work, unassigned work, then remaining active work; each group sorts by required time, order number, and stable ID. The UI includes the specification's operational filters, search, 25-row bounded pages, desktop tables, and mobile cards.
 
 The application header includes an English/Español selector. Each user's preference is stored in their protected Convex profile and follows them between screens and sessions. Application labels, statuses, dates, currency, and client-side guidance are localized; administrator-configured names and user-entered order content remain exactly as entered.
+
+## Phase 4 processing and receipts
+
+Assigned purchasing agents use the order detail workspace to review items independently, request information, record substitutions/unavailable outcomes, approve purchasing, allocate purchase transactions, attach receipt evidence, and dispatch purchased items. Shared comments and internal notes are distinct server-enforced channels. Actual totals and variance are derived exclusively from reconciled integer-minor-unit transactions.
+
+Ordinary purchase finalization requires server-verified receipt proof. Super Admin and protected-owner proof exceptions require a reason and create a distinct audit event. See [`docs/phase-4-processing.md`](docs/phase-4-processing.md) for command, visibility, reconciliation, and migration details.
 
 ## Environment-variable names
 

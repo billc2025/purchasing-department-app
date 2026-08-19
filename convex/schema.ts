@@ -35,6 +35,23 @@ export const billingResponsibilityValidator = v.union(
   v.literal("internal"),
 );
 
+export const itemStatusValidator = v.union(
+  v.literal("requested"),
+  v.literal("under_review"),
+  v.literal("information_needed"),
+  v.literal("approved"),
+  v.literal("ordered"),
+  v.literal("purchased"),
+  v.literal("substituted"),
+  v.literal("in_transit"),
+  v.literal("partially_fulfilled"),
+  v.literal("received"),
+  v.literal("unavailable"),
+  v.literal("cancelled"),
+  v.literal("returned"),
+  v.literal("refunded"),
+);
+
 export default defineSchema({
   users: defineTable({
     clerkUserId: v.string(),
@@ -179,12 +196,72 @@ export default defineSchema({
     substitutionAllowed: v.boolean(),
     notes: v.optional(v.string()),
     displayOrder: v.number(),
-    status: v.literal("requested"),
+    status: itemStatusValidator,
+    purchasedQuantity: v.optional(v.number()),
+    actualAmountMinor: v.optional(v.number()),
+    substitutionDescription: v.optional(v.string()),
+    unavailableReason: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_order_display_order", ["orderId", "displayOrder"])
     .index("by_order_status", ["orderId", "status"]),
+
+  orderComments: defineTable({
+    orderId: v.id("orders"),
+    authorUserId: v.id("users"),
+    channel: v.union(v.literal("shared"), v.literal("internal")),
+    body: v.string(),
+    createdAt: v.number(),
+  }).index("by_order_created_at", ["orderId", "createdAt"]),
+
+  purchaseTransactions: defineTable({
+    orderId: v.id("orders"),
+    vendor: v.string(),
+    purchasedAt: v.number(),
+    amountMinor: v.number(),
+    currency: v.string(),
+    purchasingAgentId: v.id("users"),
+    receiptStorageId: v.optional(v.id("_storage")),
+    receiptFileName: v.optional(v.string()),
+    receiptMediaType: v.optional(v.string()),
+    receiptByteSize: v.optional(v.number()),
+    receiptNumber: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    proofExceptionReason: v.optional(v.string()),
+    status: v.literal("finalized"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_order_purchased_at", ["orderId", "purchasedAt"])
+    .index("by_agent_purchased_at", ["purchasingAgentId", "purchasedAt"])
+    .index("by_receipt_storage_id", ["receiptStorageId"]),
+
+  purchaseAllocations: defineTable({
+    transactionId: v.id("purchaseTransactions"),
+    orderId: v.id("orders"),
+    itemId: v.id("orderItems"),
+    quantity: v.number(),
+    amountMinor: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_transaction", ["transactionId"])
+    .index("by_item", ["itemId"])
+    .index("by_order", ["orderId"]),
+
+  statusEvents: defineTable({
+    orderId: v.id("orders"),
+    itemId: v.optional(v.id("orderItems")),
+    actorUserId: v.id("users"),
+    entityType: v.union(v.literal("order"), v.literal("order_item")),
+    command: v.string(),
+    fromStatus: v.string(),
+    toStatus: v.string(),
+    reason: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_order_created_at", ["orderId", "createdAt"])
+    .index("by_item_created_at", ["itemId", "createdAt"]),
 
   attachments: defineTable({
     orderId: v.id("orders"),

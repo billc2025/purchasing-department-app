@@ -15,6 +15,7 @@ import type * as lib_authorization from "../lib/authorization.js";
 import type * as lib_bucket from "../lib/bucket.js";
 import type * as lib_orderValidation from "../lib/orderValidation.js";
 import type * as orders from "../orders.js";
+import type * as processing from "../processing.js";
 import type * as purchasing from "../purchasing.js";
 import type * as users from "../users.js";
 
@@ -32,6 +33,7 @@ declare const fullApi: ApiFromModules<{
   "lib/bucket": typeof lib_bucket;
   "lib/orderValidation": typeof lib_orderValidation;
   orders: typeof orders;
+  processing: typeof processing;
   purchasing: typeof purchasing;
   users: typeof users;
 }>;

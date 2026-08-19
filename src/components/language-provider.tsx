@@ -121,6 +121,15 @@ const copy = {
     releasedMessage: "Order released to the unassigned bucket.",
     reassignedMessage: "Order reassigned.",
     unableAssignment: "Unable to update assignment",
+    requested: "Requested",
+    underReview: "Under review",
+    informationNeeded: "Information needed",
+    approved: "Approved",
+    ordered: "Ordered",
+    substituted: "Substituted",
+    unavailable: "Unavailable",
+    returned: "Returned",
+    refunded: "Refunded",
   },
   es: {
     language: "Idioma",
@@ -236,6 +245,15 @@ const copy = {
     releasedMessage: "Pedido liberado a la bandeja sin asignar.",
     reassignedMessage: "Pedido reasignado.",
     unableAssignment: "No se pudo actualizar la asignación",
+    requested: "Solicitado",
+    underReview: "En revisión",
+    informationNeeded: "Información necesaria",
+    approved: "Aprobado",
+    ordered: "Ordenado",
+    substituted: "Sustituido",
+    unavailable: "No disponible",
+    returned: "Devuelto",
+    refunded: "Reembolsado",
   },
 } as const;
 
@@ -298,6 +316,15 @@ export function LanguageProvider({
             cancellation_requested: "cancellationRequested",
             receipt_issue_reported: "receiptIssue",
             cancelled: "cancelled",
+            requested: "requested",
+            under_review: "underReview",
+            information_needed: "informationNeeded",
+            approved: "approved",
+            ordered: "ordered",
+            substituted: "substituted",
+            unavailable: "unavailable",
+            returned: "returned",
+            refunded: "refunded",
           };
           const key = labels[status];
           return key ? copy[language][key] : status.replaceAll("_", " ");
