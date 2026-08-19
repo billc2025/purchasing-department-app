@@ -84,9 +84,25 @@ export function OrderEntry() {
       saveDraft: "Save draft",
       continue: "Continue",
       submitting: "Submitting…",
+      saving: "Saving…",
+      submissionProgress: "Saving and submitting your order…",
+      submissionSlow:
+        "Submission is taking longer than usual. Please keep this page open; we are still waiting for confirmation.",
       submitOrder: "Submit order",
       myself: "Myself",
       orderProgress: "Order progress",
+      selectCategoryError: "Please select a category.",
+      neededError: "Please enter a valid needed-by date and time.",
+      purposeError: "Please enter the purpose or event.",
+      locationError: "Please select a delivery location.",
+      budgetError: "Please enter a valid non-negative order budget.",
+      currencyError: "Please enter a three-letter currency code.",
+      clientReferenceError:
+        "Please enter the client name or billing reference.",
+      itemError:
+        "Each item needs a name, description, positive quantity, unit, and valid estimated amount.",
+      submitFailed:
+        "We could not submit the order. Please review the information and try again.",
     },
     es: {
       submittedException: "Enviado para revisión de excepción.",
@@ -142,9 +158,27 @@ export function OrderEntry() {
       saveDraft: "Guardar borrador",
       continue: "Continuar",
       submitting: "Enviando…",
+      saving: "Guardando…",
+      submissionProgress: "Guardando y enviando su pedido…",
+      submissionSlow:
+        "El envío está tardando más de lo habitual. Mantenga esta página abierta; todavía estamos esperando la confirmación.",
       submitOrder: "Enviar pedido",
       myself: "Yo",
       orderProgress: "Progreso del pedido",
+      selectCategoryError: "Seleccione una categoría.",
+      neededError:
+        "Ingrese una fecha y hora válidas para cuando necesita el pedido.",
+      purposeError: "Ingrese el propósito o evento.",
+      locationError: "Seleccione un lugar de entrega.",
+      budgetError:
+        "Ingrese un presupuesto válido para el pedido, igual o mayor que cero.",
+      currencyError: "Ingrese un código de moneda de tres letras.",
+      clientReferenceError:
+        "Ingrese el nombre del cliente o la referencia de facturación.",
+      itemError:
+        "Cada artículo necesita nombre, descripción, cantidad positiva, unidad y un monto estimado válido.",
+      submitFailed:
+        "No pudimos enviar el pedido. Revise la información e inténtelo nuevamente.",
     },
   }[language];
   const router = useRouter();
@@ -159,6 +193,8 @@ export function OrderEntry() {
   const [orderId, setOrderId] = useState<string>();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [submittingOrder, setSubmittingOrder] = useState(false);
+  const [submissionSlow, setSubmissionSlow] = useState(false);
   const [form, setForm] = useState({
     requestedForUserId: "",
     departmentId: "",
@@ -214,9 +250,80 @@ export function OrderEntry() {
     }),
     [form, items, orderId, users],
   );
-  async function persist(doSubmit = false) {
-    setBusy(true);
+
+  function validateDetails() {
+    if (!form.categoryId) return c.selectCategoryError;
+    if (
+      !form.requiredAt ||
+      !Number.isFinite(new Date(form.requiredAt).getTime())
+    )
+      return c.neededError;
+    if (!form.purpose.trim()) return c.purposeError;
+    if (!form.locationId) return c.locationError;
+    const budget = Number(form.estimatedBudget);
+    if (!Number.isFinite(budget) || budget < 0) return c.budgetError;
+    if (!/^[A-Za-z]{3}$/.test(form.currency.trim())) return c.currencyError;
+    if (
+      form.billingResponsibility === "client" &&
+      !form.clientBillingReference.trim()
+    )
+      return c.clientReferenceError;
+    return null;
+  }
+
+  function validateOrderItems() {
+    const valid = items.every((item) => {
+      const estimate = Number(item.estimatedAmount);
+      return (
+        item.name.trim() &&
+        item.specification.trim() &&
+        item.unit.trim() &&
+        Number.isFinite(item.quantity) &&
+        item.quantity > 0 &&
+        item.quantity <= 100_000 &&
+        item.estimatedAmount !== "" &&
+        Number.isFinite(estimate) &&
+        estimate >= 0
+      );
+    });
+    return valid ? null : c.itemError;
+  }
+
+  function validateAll() {
+    const detailsError = validateDetails();
+    if (detailsError) {
+      setStep(1);
+      setMessage(detailsError);
+      return false;
+    }
+    const itemError = validateOrderItems();
+    if (itemError) {
+      setStep(2);
+      setMessage(itemError);
+      return false;
+    }
+    return true;
+  }
+
+  function continueToNextStep() {
+    const error = step === 1 ? validateDetails() : validateOrderItems();
+    if (error) {
+      setMessage(error);
+      return;
+    }
     setMessage("");
+    setStep(step + 1);
+  }
+
+  async function persist(doSubmit = false) {
+    if (!validateAll()) return;
+    setBusy(true);
+    setSubmittingOrder(doSubmit);
+    setSubmissionSlow(false);
+    setMessage("");
+    const slowTimer = doSubmit
+      ? window.setTimeout(() => setSubmissionSlow(true), 4_000)
+      : undefined;
     try {
       const id = await saveDraft(payload);
       setOrderId(id);
@@ -225,13 +332,17 @@ export function OrderEntry() {
         setMessage(result.isLate ? c.submittedException : c.submitted);
         router.push(`/app/orders/${id}`);
       } else setMessage(c.draftSaved);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : c.unableSave);
+    } catch {
+      setMessage(doSubmit ? c.submitFailed : c.unableSave);
     } finally {
+      if (slowTimer !== undefined) window.clearTimeout(slowTimer);
+      setSubmissionSlow(false);
+      setSubmittingOrder(false);
       setBusy(false);
     }
   }
   async function uploadReference(file: File) {
+    if (!validateAll()) return;
     setBusy(true);
     setMessage("");
     try {
@@ -255,8 +366,8 @@ export function OrderEntry() {
         { id: attachmentId, fileName: file.name },
       ]);
       setMessage(`${file.name} attached to the draft.`);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : c.unableUpload);
+    } catch {
+      setMessage(c.unableUpload);
     } finally {
       setBusy(false);
     }
@@ -750,10 +861,10 @@ export function OrderEntry() {
               disabled={busy}
               onClick={() => void persist(false)}
             >
-              {c.saveDraft}
+              {busy && !submittingOrder ? c.saving : c.saveDraft}
             </Button>
             {step < 3 ? (
-              <Button type="button" onClick={() => setStep(step + 1)}>
+              <Button type="button" onClick={continueToNextStep}>
                 {c.continue}
               </Button>
             ) : (
@@ -766,6 +877,11 @@ export function OrderEntry() {
         {message && (
           <p className="mt-4 text-sm" role="status">
             {message}
+          </p>
+        )}
+        {submittingOrder && (
+          <p className="mt-4 text-sm text-muted-foreground" role="status">
+            {submissionSlow ? c.submissionSlow : c.submissionProgress}
           </p>
         )}
       </form>
