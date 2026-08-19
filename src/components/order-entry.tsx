@@ -34,6 +34,7 @@ export function OrderEntry() {
   const submit = useMutation(api.orders.submit);
   const generateUploadUrl = useMutation(api.orders.generateUploadUrl);
   const attachReferenceImage = useMutation(api.orders.attachReferenceImage);
+  const removeAttachment = useMutation(api.orders.removeAttachment);
   const [step, setStep] = useState(1);
   const [orderId, setOrderId] = useState<string>();
   const [message, setMessage] = useState("");
@@ -56,6 +57,9 @@ export function OrderEntry() {
     comments: "",
   });
   const [items, setItems] = useState<Item[]>([emptyItem()]);
+  const [attachments, setAttachments] = useState<
+    Array<{ id: string; fileName: string }>
+  >([]);
   const leadTimePreview = useQuery(
     api.orders.leadTimePreview,
     form.categoryId ? { categoryId: form.categoryId as never } : "skip",
@@ -124,11 +128,15 @@ export function OrderEntry() {
       });
       if (!response.ok) throw new Error("Image upload failed");
       const { storageId } = (await response.json()) as { storageId: string };
-      await attachReferenceImage({
+      const attachmentId = await attachReferenceImage({
         orderId: id as never,
         storageId: storageId as never,
         fileName: file.name,
       });
+      setAttachments((current) => [
+        ...current,
+        { id: attachmentId, fileName: file.name },
+      ]);
       setMessage(`${file.name} attached to the draft.`);
     } catch (error) {
       setMessage(
@@ -516,6 +524,36 @@ export function OrderEntry() {
                   event.currentTarget.value = "";
                 }}
               />
+              {attachments.length > 0 && (
+                <ul className="mt-3 space-y-2" aria-label="Attached images">
+                  {attachments.map((attachment) => (
+                    <li
+                      key={attachment.id}
+                      className="flex items-center justify-between gap-3 rounded-md bg-muted px-3 py-2 text-sm"
+                    >
+                      <span className="truncate">{attachment.fileName}</span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={async () => {
+                          await removeAttachment({
+                            attachmentId: attachment.id as never,
+                          });
+                          setAttachments((current) =>
+                            current.filter(
+                              (candidate) => candidate.id !== attachment.id,
+                            ),
+                          );
+                          setMessage(`${attachment.fileName} removed.`);
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
         )}
