@@ -12,7 +12,7 @@ type Item = {
   quantity: number;
   unit: string;
   preferredVendor?: string;
-  estimatedAmountMinor: number;
+  estimatedAmount: string;
   substitutionAllowed: boolean;
   notes?: string;
 };
@@ -21,7 +21,7 @@ const emptyItem = (): Item => ({
   specification: "",
   quantity: 1,
   unit: "each",
-  estimatedAmountMinor: 0,
+  estimatedAmount: "0.00",
   substitutionAllowed: true,
 });
 const field = "mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm";
@@ -87,7 +87,10 @@ export function OrderEntry() {
       estimatedAmountMinor: Math.round(Number(form.estimatedBudget) * 100),
       currency: form.currency,
       comments: form.comments || undefined,
-      items,
+      items: items.map(({ estimatedAmount, ...item }) => ({
+        ...item,
+        estimatedAmountMinor: Math.round(Number(estimatedAmount) * 100),
+      })),
     }),
     [form, items, orderId, users],
   );
@@ -444,27 +447,44 @@ export function OrderEntry() {
                   </label>
                   <label>
                     Estimated amount
-                    <input
-                      min="0"
-                      step="0.01"
-                      type="number"
-                      className={field}
-                      value={(item.estimatedAmountMinor / 100).toFixed(2)}
-                      onChange={(e) =>
-                        setItems(
-                          items.map((x, i) =>
-                            i === index
-                              ? {
-                                  ...x,
-                                  estimatedAmountMinor: Math.round(
-                                    Number(e.target.value) * 100,
-                                  ),
-                                }
-                              : x,
-                          ),
-                        )
-                      }
-                    />
+                    <div className="relative">
+                      <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">
+                        $
+                      </span>
+                      <input
+                        required
+                        inputMode="decimal"
+                        pattern="\d+(\.\d{0,2})?"
+                        className={`${field} pl-7`}
+                        value={item.estimatedAmount}
+                        onFocus={(event) => event.currentTarget.select()}
+                        onBlur={(event) => {
+                          const amount = Number(event.currentTarget.value);
+                          if (Number.isFinite(amount)) {
+                            setItems(
+                              items.map((x, i) =>
+                                i === index
+                                  ? { ...x, estimatedAmount: amount.toFixed(2) }
+                                  : x,
+                              ),
+                            );
+                          }
+                        }}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          if (/^\d*(?:\.\d{0,2})?$/.test(value)) {
+                            setItems(
+                              items.map((x, i) =>
+                                i === index
+                                  ? { ...x, estimatedAmount: value }
+                                  : x,
+                              ),
+                            );
+                          }
+                        }}
+                        aria-label="Estimated amount in dollars"
+                      />
+                    </div>
                   </label>
                   <label className="sm:col-span-2">
                     <input
