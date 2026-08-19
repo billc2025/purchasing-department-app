@@ -9,6 +9,18 @@ export const visibleRoleValidator = v.union(
   v.literal("super_admin"),
 );
 
+export const orderStatusValidator = v.union(
+  v.literal("draft"),
+  v.literal("unassigned"),
+  v.literal("exception_pending"),
+  v.literal("cancelled"),
+);
+
+export const billingResponsibilityValidator = v.union(
+  v.literal("client"),
+  v.literal("internal"),
+);
+
 export default defineSchema({
   users: defineTable({
     clerkUserId: v.string(),
@@ -81,6 +93,74 @@ export default defineSchema({
   })
     .index("by_category_active", ["categoryId", "isActive"])
     .index("by_category_effective_from", ["categoryId", "effectiveFrom"]),
+
+  orders: defineTable({
+    orderNumber: v.string(),
+    requesterUserId: v.id("users"),
+    createdByUserId: v.id("users"),
+    requestedForUserId: v.id("users"),
+    departmentId: v.optional(v.id("departments")),
+    costCenterSnapshot: v.optional(v.string()),
+    billingResponsibility: billingResponsibilityValidator,
+    clientBillingReference: v.optional(v.string()),
+    billingNotes: v.optional(v.string()),
+    categoryId: v.id("categories"),
+    categoryRuleVersion: v.number(),
+    leadTimeMinutesSnapshot: v.number(),
+    purpose: v.string(),
+    locationId: v.id("locations"),
+    deliveryInstructions: v.optional(v.string()),
+    requiredAt: v.number(),
+    displayTimezone: v.string(),
+    submittedAt: v.optional(v.number()),
+    earliestCompliantAt: v.number(),
+    isLate: v.boolean(),
+    estimatedAmountMinor: v.number(),
+    currency: v.string(),
+    comments: v.optional(v.string()),
+    status: orderStatusValidator,
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_order_number", ["orderNumber"])
+    .index("by_requester_created_at", ["requesterUserId", "createdAt"])
+    .index("by_requested_for_created_at", ["requestedForUserId", "createdAt"])
+    .index("by_status_required_at", ["status", "requiredAt"]),
+
+  orderItems: defineTable({
+    orderId: v.id("orders"),
+    name: v.string(),
+    specification: v.string(),
+    quantity: v.number(),
+    unit: v.string(),
+    preferredVendor: v.optional(v.string()),
+    estimatedAmountMinor: v.number(),
+    substitutionAllowed: v.boolean(),
+    notes: v.optional(v.string()),
+    displayOrder: v.number(),
+    status: v.literal("requested"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_order_display_order", ["orderId", "displayOrder"])
+    .index("by_order_status", ["orderId", "status"]),
+
+  attachments: defineTable({
+    orderId: v.id("orders"),
+    itemId: v.optional(v.id("orderItems")),
+    uploaderUserId: v.id("users"),
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+    mediaType: v.string(),
+    byteSize: v.number(),
+    purpose: v.literal("reference_image"),
+    status: v.union(v.literal("active"), v.literal("removed")),
+    createdAt: v.number(),
+    removedAt: v.optional(v.number()),
+  })
+    .index("by_order_status", ["orderId", "status"])
+    .index("by_item_status", ["itemId", "status"])
+    .index("by_storage_id", ["storageId"]),
 
   auditEvents: defineTable({
     actorUserId: v.id("users"),

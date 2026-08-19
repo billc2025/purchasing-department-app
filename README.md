@@ -4,7 +4,7 @@ Purchasing Hub is an internal purchasing-request and fulfillment system for fewe
 
 Each order also records who ultimately bears its cost: the identified client is billed, or the organization absorbs it internally. This classification is required at order entry and protected from silent reclassification after submission.
 
-This repository contains the approved Phase 0 architecture and the Phase 1 authentication/authorization foundation. Product purchasing workflows begin in Phase 2 only after explicit approval. The controlling specification is [`Purchasing_Hub_Codex_Build_Package.md`](Purchasing_Hub_Codex_Build_Package.md).
+This repository contains the approved architecture, Phase 1 authentication/authorization foundation, and Phase 2 order-entry workflow. The controlling specification is [`Purchasing_Hub_Codex_Build_Package.md`](Purchasing_Hub_Codex_Build_Package.md).
 
 ## Approved stack
 
@@ -46,6 +46,12 @@ The application is then available at `http://localhost:3000`. Without service va
 
 The first Overlord identity is matched exclusively against the protected Convex deployment value. Its stored visible role remains an ordinary role-shaped value so the hidden role is absent from ordinary schemas and client role lists.
 
+## Phase 2 development data
+
+An authorized administrator or the protected system owner can select **Add sample data** on the application dashboard. This idempotently creates editable development examples for Food Delivery (one hour), Event Purchase (three continuous calendar days), General Operations, and Main Office. They are samples, not fixed production policy.
+
+Phase 2 accepts JPEG, PNG, and WebP reference images up to 8 MB. File metadata is verified from Convex storage on the server. Draft attachments may be removed; access to active attachments follows order authorization.
+
 ## Environment-variable names
 
 Values must be different for development, preview, and production and must never be committed. Exact names will be confirmed against the versions selected in Phase 1.
@@ -72,7 +78,7 @@ Only variables deliberately prefixed with `NEXT_PUBLIC_` may be exposed to the b
 
 ## Current constraints
 
-- Phase 1 provides foundations and placeholder dashboards only; Clerk tenant, Convex deployment, Vercel project, and CI remain unconfigured externally.
+- The Clerk development tenant and Convex development deployment are configured. Vercel and CI remain deferred.
 - Production categories, budget thresholds, budget enforcement, cancellation authority after purchase, and edit cutoffs remain explicit configuration/future decisions.
 - The hidden Overlord is a server-resolved capability and must never appear in ordinary role/user APIs or client bundles.
 

@@ -5,77 +5,105 @@ import {
   AuthLoading,
   Authenticated,
   Unauthenticated,
+  useMutation,
   useQuery,
 } from "convex/react";
+import Link from "next/link";
 import { api } from "../../convex/_generated/api";
 import { AccountAccessBoundary } from "@/components/access-boundary";
+import { Button } from "@/components/ui/button";
+import { MyOrders } from "@/components/my-orders";
+import { OrderEntry } from "@/components/order-entry";
+import { OrderDetail } from "@/components/order-detail";
 
-const roleLabels: Record<string, string> = {
-  requester: "Requester",
-  receptionist: "Receptionist",
-  purchasing_agent: "Purchasing Agent",
-  admin: "Admin",
-  super_admin: "Super Admin",
-};
+type View = "dashboard" | "new" | "mine" | "detail";
 
-const roleNavigation: Record<string, string[]> = {
-  requester: ["My requests", "New request"],
-  receptionist: ["Operational orders", "Receiving"],
-  purchasing_agent: ["Purchasing bucket", "Assigned to me"],
-  admin: ["Administration", "Reports"],
-  super_admin: ["Administration", "Reports", "Exception review"],
-};
-
-function Dashboard() {
+function Workspace({ view, orderId }: { view: View; orderId?: string }) {
   const profile = useQuery(api.users.current);
+  const seed = useMutation(api.configuration.seedDevelopmentExamples);
   if (profile === undefined)
     return <StateCard title="Loading your workspace…" />;
-
-  const role = profile.canAccessSystemControl
-    ? "System Owner"
-    : roleLabels[profile.role];
   return (
-    <main className="mx-auto min-h-screen max-w-6xl px-6 py-8">
-      <header className="flex items-center justify-between border-b pb-5">
+    <main className="mx-auto min-h-screen max-w-7xl px-4 py-6 sm:px-6">
+      <header className="flex flex-wrap items-center justify-between gap-4 border-b pb-5">
         <div>
-          <p className="text-sm font-medium text-muted-foreground">
+          <Link
+            href="/app"
+            className="text-sm font-semibold text-muted-foreground"
+          >
             Purchasing Hub
-          </p>
+          </Link>
           <h1 className="text-2xl font-semibold">
             Welcome, {profile.displayName}
           </h1>
-          <p className="text-sm text-muted-foreground">{role}</p>
         </div>
-        <UserButton />
+        <div className="flex items-center gap-3">
+          <nav aria-label="Primary" className="flex gap-2 text-sm">
+            <Link
+              className="rounded-md px-3 py-2 hover:bg-muted"
+              href="/app/orders"
+            >
+              My orders
+            </Link>
+            <Link
+              className="rounded-md bg-primary px-3 py-2 text-primary-foreground"
+              href="/app/orders/new"
+            >
+              New order
+            </Link>
+          </nav>
+          <UserButton />
+        </div>
       </header>
-      <section className="mt-10 rounded-xl border bg-card p-8">
-        <h2 className="text-xl font-semibold">Your dashboard</h2>
-        <p className="mt-2 max-w-2xl text-muted-foreground">
-          Authentication and server-authorized account access are ready.
-          Purchasing workflows intentionally begin in Phase 2.
-        </p>
-        <nav
-          aria-label="Primary"
-          className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
-        >
-          {profile.canAccessSystemControl && (
-            <Placeholder label="System controls" />
-          )}
-          {(roleNavigation[profile.role] ?? []).map((label) => (
-            <Placeholder key={label} label={label} />
-          ))}
-          <Placeholder label="My profile" />
-        </nav>
+      <section className="py-8">
+        {view === "new" && <OrderEntry />}
+        {view === "mine" && <MyOrders />}
+        {view === "detail" && orderId && <OrderDetail orderId={orderId} />}
+        {view === "dashboard" && (
+          <div className="grid gap-5 md:grid-cols-2">
+            <Link
+              href="/app/orders/new"
+              className="rounded-2xl border bg-card p-7 hover:border-foreground/30"
+            >
+              <p className="text-sm text-muted-foreground">Start here</p>
+              <h2 className="mt-1 text-xl font-semibold">Place a new order</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Save a draft, add several items, check the deadline, and submit.
+              </p>
+            </Link>
+            <Link
+              href="/app/orders"
+              className="rounded-2xl border bg-card p-7 hover:border-foreground/30"
+            >
+              <p className="text-sm text-muted-foreground">Your activity</p>
+              <h2 className="mt-1 text-xl font-semibold">Review my orders</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Track drafts, compliant requests, and requests awaiting
+                exception review.
+              </p>
+            </Link>
+            {profile.canAccessSystemControl && (
+              <div className="rounded-2xl border border-dashed p-7">
+                <h2 className="text-lg font-semibold">
+                  Development sample data
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Adds editable Food Delivery (1 hour), Event Purchase (3 days),
+                  General Operations, and Main Office examples.
+                </p>
+                <Button
+                  className="mt-4"
+                  variant="outline"
+                  onClick={() => seed()}
+                >
+                  Add sample data
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
       </section>
     </main>
-  );
-}
-
-function Placeholder({ label }: { label: string }) {
-  return (
-    <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-      {label}
-    </div>
   );
 }
 
@@ -92,7 +120,13 @@ function StateCard({ title, detail }: { title: string; detail?: string }) {
   );
 }
 
-export function AppShell() {
+export function AppShell({
+  view = "dashboard",
+  orderId,
+}: {
+  view?: View;
+  orderId?: string;
+}) {
   return (
     <>
       <AuthLoading>
@@ -100,7 +134,7 @@ export function AppShell() {
       </AuthLoading>
       <Authenticated>
         <AccountAccessBoundary>
-          <Dashboard />
+          <Workspace view={view} orderId={orderId} />
         </AccountAccessBoundary>
       </Authenticated>
       <Unauthenticated>

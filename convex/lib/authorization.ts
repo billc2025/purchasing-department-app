@@ -22,6 +22,7 @@ export type AuthorizedUser = {
   role: VisibleRole;
   isActive: boolean;
   isProtectedPrincipal: boolean;
+  timezone?: string;
 };
 
 export function assertProvisionedActiveUser(
