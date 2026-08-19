@@ -408,7 +408,6 @@ export function OrderEntry() {
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          void persist(step === 3);
         }}
         className="rounded-2xl border bg-card p-5 sm:p-8"
       >
@@ -877,11 +876,20 @@ export function OrderEntry() {
               {busy && !submittingOrder ? c.saving : c.saveDraft}
             </Button>
             {step < 3 ? (
-              <Button type="button" onClick={continueToNextStep}>
+              <Button
+                key="continue-order"
+                type="button"
+                onClick={continueToNextStep}
+              >
                 {c.continue}
               </Button>
             ) : (
-              <Button type="submit" disabled={busy}>
+              <Button
+                key="submit-order"
+                type="button"
+                disabled={busy}
+                onClick={() => void persist(true)}
+              >
                 {busy ? c.submitting : c.submitOrder}
               </Button>
             )}
