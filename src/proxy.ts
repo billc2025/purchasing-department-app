@@ -1,6 +1,17 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
 
-export default clerkMiddleware({ contentSecurityPolicy: {} });
+const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+const convexWebSocketUrl = convexUrl?.replace(/^http/, "ws");
+
+export default clerkMiddleware({
+  contentSecurityPolicy: {
+    directives: {
+      "connect-src": [convexUrl, convexWebSocketUrl].filter(
+        (source): source is string => Boolean(source),
+      ),
+    },
+  },
+});
 
 export const config = {
   matcher: [
