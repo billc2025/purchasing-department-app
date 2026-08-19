@@ -9,6 +9,7 @@ import {
   validateBilling,
   validateItems,
 } from "./lib/orderValidation";
+import { normalizeReason } from "./lib/bucket";
 import { billingResponsibilityValidator } from "./schema";
 
 const itemValidator = v.object({
@@ -317,6 +318,10 @@ export const detail = queryGeneric({
     return {
       ...order,
       items,
+      permissions: {
+        canOverlordCancel:
+          effectiveRole(actor) === "overlord" && order.status !== "cancelled",
+      },
       attachments: attachments.map((file) => ({
         id: file._id,
         fileName: file.fileName,
@@ -324,6 +329,48 @@ export const detail = queryGeneric({
         byteSize: file.byteSize,
       })),
     };
+  },
+});
+
+export const cancelByOverlord = mutationGeneric({
+  args: { orderId: v.id("orders"), reason: v.string() },
+  handler: async (ctx, args) => {
+    const actor = await requireActiveUser(ctx);
+    if (effectiveRole(actor) !== "overlord") throw new Error("Access denied");
+    const reason = normalizeReason(args.reason);
+    const order = await ctx.db.get(args.orderId);
+    if (!order) throw new Error("Order not found");
+    if (order.status === "cancelled")
+      throw new Error("Order is already cancelled");
+    const now = Date.now();
+    await ctx.db.patch(args.orderId, {
+      status: "cancelled",
+      assignedAgentId: undefined,
+      assignedAt: undefined,
+      updatedAt: now,
+    });
+    if (order.assignedAgentId) {
+      await ctx.db.insert("assignmentEvents", {
+        orderId: args.orderId,
+        fromAgentId: order.assignedAgentId,
+        action: "cleared_on_cancel",
+        actorUserId: actor._id,
+        reason,
+        createdAt: now,
+      });
+    }
+    await appendAuditEvent(ctx, actor, {
+      action: "order.cancelled_by_overlord",
+      entityType: "order",
+      entityId: args.orderId,
+      reason,
+      priorValues: {
+        status: order.status,
+        assignedAgentId: order.assignedAgentId,
+      },
+      newValues: { status: "cancelled" },
+    });
+    return { status: "cancelled" as const };
   },
 });
 export const generateUploadUrl = mutationGeneric({

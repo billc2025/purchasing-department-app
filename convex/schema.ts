@@ -158,6 +158,7 @@ export default defineSchema({
       v.literal("claimed"),
       v.literal("released"),
       v.literal("reassigned"),
+      v.literal("cleared_on_cancel"),
     ),
     actorUserId: v.id("users"),
     reason: v.optional(v.string()),

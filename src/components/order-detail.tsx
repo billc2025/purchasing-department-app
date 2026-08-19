@@ -1,10 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { Button } from "@/components/ui/button";
 
 export function OrderDetail({ orderId }: { orderId: string }) {
   const order = useQuery(api.orders.detail, { orderId: orderId as never });
+  const cancelOrder = useMutation(api.orders.cancelByOverlord);
+  const [showCancel, setShowCancel] = useState(false);
+  const [reason, setReason] = useState("");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
   if (order === undefined) return <p>Loading order…</p>;
   return (
     <article className="mx-auto max-w-4xl">
@@ -90,6 +98,69 @@ export function OrderDetail({ orderId }: { orderId: string }) {
               {order.comments}
             </p>
           </div>
+        )}
+        {order.permissions.canOverlordCancel && (
+          <section className="mt-8 rounded-xl border border-red-200 bg-red-50 p-4">
+            <h3 className="font-semibold text-red-900">Overlord controls</h3>
+            <p className="mt-1 text-sm text-red-800">
+              Cancellation preserves this order and its complete audit history.
+            </p>
+            {!showCancel ? (
+              <Button
+                className="mt-4"
+                variant="destructive"
+                onClick={() => setShowCancel(true)}
+              >
+                Cancel order
+              </Button>
+            ) : (
+              <div className="mt-4 flex flex-wrap items-end gap-3">
+                <label className="min-w-64 flex-1 text-sm text-red-950">
+                  Required cancellation reason
+                  <input
+                    className="mt-1 w-full rounded-md border bg-white px-3 py-2"
+                    value={reason}
+                    onChange={(event) => setReason(event.target.value)}
+                  />
+                </label>
+                <Button
+                  variant="destructive"
+                  disabled={busy || reason.trim().length < 3}
+                  onClick={async () => {
+                    setBusy(true);
+                    setMessage("");
+                    try {
+                      await cancelOrder({
+                        orderId: orderId as never,
+                        reason,
+                      });
+                      setMessage("Order cancelled. History was preserved.");
+                      setShowCancel(false);
+                      setReason("");
+                    } catch (error) {
+                      setMessage(
+                        error instanceof Error
+                          ? error.message
+                          : "Unable to cancel order",
+                      );
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  Confirm cancellation
+                </Button>
+                <Button variant="ghost" onClick={() => setShowCancel(false)}>
+                  Keep order
+                </Button>
+              </div>
+            )}
+            {message && (
+              <p className="mt-3 text-sm text-red-900" role="status">
+                {message}
+              </p>
+            )}
+          </section>
         )}
       </div>
     </article>
