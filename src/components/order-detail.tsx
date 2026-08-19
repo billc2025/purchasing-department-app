@@ -46,7 +46,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
             </dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Estimate</dt>
+            <dt className="text-muted-foreground">Total order budget</dt>
             <dd>
               {new Intl.NumberFormat(undefined, {
                 style: "currency",
@@ -82,7 +82,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
                   </div>
                   <div>
                     <dt className="text-xs text-muted-foreground">
-                      Estimated amount
+                      Estimated item cost
                     </dt>
                     <dd>
                       {new Intl.NumberFormat(undefined, {
