@@ -293,7 +293,7 @@ export function OrderEntry() {
               )}
             </label>
             <label>
-              Required date and time
+              Needed by date and time
               <input
                 required
                 type="datetime-local"

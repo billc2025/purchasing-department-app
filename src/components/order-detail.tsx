@@ -34,7 +34,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
             <dd>{order.createdByName}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Required</dt>
+            <dt className="text-muted-foreground">Needed by</dt>
             <dd>{new Date(order.requiredAt).toLocaleString()}</dd>
           </div>
           <div>
