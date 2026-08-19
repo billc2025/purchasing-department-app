@@ -71,6 +71,8 @@ export function OrderEntry() {
       removeItem: "Remove item",
       addItem: "Add another item",
       images: "Reference images",
+      uploadImage: "Upload reference image",
+      optional: "Optional",
       imageHelp:
         "JPEG, PNG, or WebP; maximum 8 MB. The server verifies the uploaded file.",
       attachedImages: "Attached images",
@@ -145,6 +147,8 @@ export function OrderEntry() {
       removeItem: "Eliminar artículo",
       addItem: "Agregar otro artículo",
       images: "Imágenes de referencia",
+      uploadImage: "Subir imagen de referencia",
+      optional: "Opcional",
       imageHelp:
         "JPEG, PNG o WebP; máximo 8 MB. El servidor verifica el archivo cargado.",
       attachedImages: "Imágenes adjuntas",
@@ -748,15 +752,24 @@ export function OrderEntry() {
               {c.addItem}
             </Button>
             <div className="rounded-xl border border-dashed p-4">
-              <label className="font-medium" htmlFor="reference-image">
-                {c.images}
-              </label>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">{c.images}</span>
+                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                  {c.optional}
+                </span>
+              </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 {c.imageHelp}
               </p>
+              <label
+                className="mt-3 inline-flex cursor-pointer items-center rounded-md border bg-background px-4 py-2 text-sm font-medium shadow-xs hover:bg-accent hover:text-accent-foreground"
+                htmlFor="reference-image"
+              >
+                {c.uploadImage}
+              </label>
               <input
                 id="reference-image"
-                className="mt-3 block w-full text-sm"
+                className="sr-only"
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 disabled={busy}
