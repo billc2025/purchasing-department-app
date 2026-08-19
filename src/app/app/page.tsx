@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/app-shell";
+import { auth } from "@clerk/nextjs/server";
 
-export default function ApplicationPage() {
+export default async function ApplicationPage() {
   if (
     !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
     !process.env.NEXT_PUBLIC_CONVEX_URL
@@ -13,5 +14,6 @@ export default function ApplicationPage() {
       </main>
     );
   }
+  await auth.protect();
   return <AppShell />;
 }
