@@ -315,12 +315,26 @@ export const detail = queryGeneric({
         q.eq("orderId", args.orderId).eq("status", "active"),
       )
       .collect();
+    const [requestedForUser, createdByUser] = await Promise.all([
+      ctx.db.get(order.requestedForUserId),
+      ctx.db.get(order.createdByUserId),
+    ]);
+    const viewerIsOverlord = effectiveRole(actor) === "overlord";
+    const visibleUserName = (
+      user: { displayName: string; isProtectedPrincipal: boolean } | null,
+    ) =>
+      !user
+        ? "Unavailable user"
+        : user.isProtectedPrincipal && !viewerIsOverlord
+          ? "System Administrator"
+          : user.displayName;
     return {
       ...order,
       items,
+      requestedForName: visibleUserName(requestedForUser),
+      createdByName: visibleUserName(createdByUser),
       permissions: {
-        canOverlordCancel:
-          effectiveRole(actor) === "overlord" && order.status !== "cancelled",
+        canOverlordCancel: viewerIsOverlord && order.status !== "cancelled",
       },
       attachments: attachments.map((file) => ({
         id: file._id,

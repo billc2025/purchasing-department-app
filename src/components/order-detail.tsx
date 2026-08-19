@@ -26,6 +26,14 @@ export function OrderDetail({ orderId }: { orderId: string }) {
         </div>
         <dl className="mt-6 grid gap-4 text-sm sm:grid-cols-2">
           <div>
+            <dt className="text-muted-foreground">Requested for</dt>
+            <dd>{order.requestedForName}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Created by</dt>
+            <dd>{order.createdByName}</dd>
+          </div>
+          <div>
             <dt className="text-muted-foreground">Required</dt>
             <dd>{new Date(order.requiredAt).toLocaleString()}</dd>
           </div>
