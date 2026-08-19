@@ -83,7 +83,7 @@ All “all” and “yes” entries remain constrained by purpose-specific DTOs.
 
 ## Audit integrity and redaction
 
-Audited actions include creation/edit, assignment/release/reassignment, transitions, approvals/rejections, cost changes, receipt/upload, substitution, refund, cancellation, confirmation, user/role, export, and settings changes. Events store actor, action, entity, ID, timestamp, safe prior/new values, correlation, and required reason.
+Audited actions include creation/edit, billing-responsibility classification or reclassification, assignment/release/reassignment, transitions, approvals/rejections, cost changes, receipt/upload, substitution, refund, cancellation, confirmation, user/role, export, and settings changes. Events store actor, action, entity, ID, timestamp, safe prior/new values, correlation, and required reason.
 
 Audit events have insert-only internal primitives and no normal update/delete endpoints. Corrections append linked events. Payload schemas allowlist business fields and exclude secrets, tokens, invitations, full attachment URLs, authentication material, and unnecessarily sensitive comment/file content. Audit access itself is role-controlled and export access audited.
 
@@ -109,6 +109,7 @@ Phase 1 establishes authorization test helpers and a role/identity matrix. Each 
 - internal/shared comment isolation;
 - attachment type/size/association/download authorization and signed-URL leakage tests;
 - receipt requirement, minor-unit reconciliation, correction, refund, and cancellation outcome tests;
+- billing-responsibility validation, required client-reference, post-submission reclassification authorization, audit, and reporting-isolation tests;
 - audit completeness, immutability, reason requirements, and redaction tests;
 - CSV formula injection and report authorization tests;
 - Playwright smoke tests for invitation-only access and critical role journeys.
@@ -121,4 +122,4 @@ Phase 8 performs a function-by-function permission audit and adds regression tes
 - Clerk invitation/session policy and webhook use require tenant configuration in Phase 1.
 - Audit retention/export access and financial record retention require organizational policy.
 - Final budget thresholds, edit cutoffs, and post-purchase cancellation authority must not be inferred.
-
+- Whether client references eventually come from a managed client directory or remain controlled snapshots requires a later business decision; Phase 2 must support the required snapshot without inventing accounts-receivable workflows.

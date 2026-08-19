@@ -105,6 +105,7 @@ Expected deployment flow:
 - External side effects use idempotency/deduplication keys and record pending/success/failure state.
 - Users receive current-state conflict errors for stale edits, claims, and transitions.
 - Derived order status is recalculated/validated from item states inside mutations.
+- Submission validates the order-level billing responsibility server-side. Client-billed orders require a client reference snapshot, and post-submission reclassification uses a dedicated audited correction rather than a generic patch.
 - Queries remain bounded and indexed; report/export work uses server-authorized batching.
 
 ## Assumptions and decisions deferred
@@ -112,6 +113,5 @@ Expected deployment flow:
 - One organization/tenant is assumed for release one; department/location provide internal segmentation, not tenant security.
 - One currency is stored per estimate/transaction, but no cross-currency total is computed without an approved exchange-rate policy.
 - Continuous calendar lead time includes weekends and holidays.
-- Category lists, budget rules/thresholds, automatic allocation use, final post-purchase cancellation authority, edit cutoffs, external notifications, and PDF reports remain configurable or future decisions.
+- Category lists, budget rules/thresholds, automatic allocation use, a managed client directory/accounts-receivable integration, final post-purchase cancellation authority, edit cutoffs, external notifications, and PDF reports remain configurable or future decisions.
 - Clerk, Convex, Vercel, and CI are not configured in Phase 0.
-

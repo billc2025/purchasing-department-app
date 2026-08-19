@@ -57,6 +57,8 @@ Fields include:
 - immutable human-readable `orderNumber`;
 - `requesterUserId`, `createdByUserId`, `requestedForUserId`;
 - `departmentId`, optional cost-center snapshot;
+- required `billingResponsibility` (`client|internal`) selected for the whole order;
+- when client-billed, a required client billing reference snapshot (at minimum the client display name; a future client-directory ID may also be stored) and optional billing notes;
 - exactly one `categoryId` and applied category-rule snapshot/version;
 - purpose/event, `locationId`, delivery instructions;
 - `requiredAt`, `displayTimezone`, `submittedAt`;
@@ -67,6 +69,8 @@ Fields include:
 - cancellation, receipt-confirmation, completion, archive/version metadata.
 
 Indexes: `by_order_number`, `by_requester_created_at`, `by_requested_for_created_at`, `by_status_required_at`, `by_assignee_status_required_at`, `by_category_status_required_at`, `by_department_status_required_at`, `by_location_status_required_at`, `by_required_at`, and bounded report-oriented creation/completion indexes. Compound status/due indexes support bucket views; app logic supplies deterministic priority and ID tie-breakers.
+
+Billing responsibility is an order-level accounting classification, not a payment or collection status. `client` means the organization initially pays or records the purchase and expects the cost to be charged through to the identified client; `internal` means the organization absorbs the cost. A client-billed order cannot be submitted without its client reference. Changes after submission require a dedicated authorized, reasoned, audited correction so historical reports cannot be silently reclassified. Release one assumes one billing responsibility per order; mixed-responsibility purchases must be split into separate orders unless a later approved allocation model replaces this rule.
 
 ### `orderItems`
 
@@ -189,6 +193,7 @@ Indexes: `by_entity_created_at`, `by_actor_created_at`, `by_action_created_at`, 
 - An order has exactly one category and many items.
 - Each item belongs to exactly one order; transaction/receipt joins must reference items from that order.
 - Current assignment/status/cost summaries are projections validated against append-only histories.
+- Every order has exactly one valid billing responsibility; client-billed orders retain the submitted client reference snapshot even if a future client directory record changes.
 - An item can have many transaction, receipt, receiving, and resolution records.
 - A receipt can cover many items; an item can appear on many receipts.
 - Ordinary completion requires a correct requester confirmation; privileged override requires reason and audit.
@@ -198,4 +203,3 @@ Indexes: `by_entity_created_at`, `by_actor_created_at`, `by_action_created_at`, 
 ## Retention
 
 Orders, items, financial records, status/assignment history, decisions, confirmations, and audit records are retained and corrected through append-only reversal/correction events. Configuration and users are deactivated/versioned. Attachment retention duration and legal/finance requirements are unresolved; until approved, files linked to financial/audit history must not be automatically destroyed.
-

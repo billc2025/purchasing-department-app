@@ -2,6 +2,8 @@
 
 Purchasing Hub is an internal purchasing-request and fulfillment system for fewer than 50 users. Employees submit multi-item orders, purchasing agents claim and fulfill work, receptionists record receipt, requesters confirm outcomes, and administrators manage configuration and reporting. Reliability, server-enforced permissions, traceability, and ease of use take priority over feature breadth.
 
+Each order also records who ultimately bears its cost: the identified client is billed, or the organization absorbs it internally. This classification is required at order entry and protected from silent reclassification after submission.
+
 This repository contains the approved Phase 0 architecture and the Phase 1 authentication/authorization foundation. Product purchasing workflows begin in Phase 2 only after explicit approval. The controlling specification is [`Purchasing_Hub_Codex_Build_Package.md`](Purchasing_Hub_Codex_Build_Package.md).
 
 ## Approved stack
