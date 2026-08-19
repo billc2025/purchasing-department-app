@@ -93,9 +93,12 @@ export function OrderDetail({ orderId }: { orderId: string }) {
                   </div>
                 </dl>
               </div>
-              <p className="text-sm">
-                {item.quantity} {item.unit}
-              </p>
+              <dl className="text-sm sm:text-right">
+                <dt className="text-xs text-muted-foreground">Quantity</dt>
+                <dd className="font-medium">
+                  {item.quantity} {item.unit}
+                </dd>
+              </dl>
             </div>
           ))}
         </div>
