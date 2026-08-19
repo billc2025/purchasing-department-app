@@ -117,13 +117,19 @@ export function PurchasingBucket() {
     completed: t("completed"),
     cancelled: t("cancelled"),
   };
-  const result = useQuery(api.purchasing.listBucket, {
+  const queriedResult = useQuery(api.purchasing.listBucket, {
     filter,
     search: search || undefined,
     offset,
     limit: 25,
     ...bounds,
   });
+  const [lastResult, setLastResult] =
+    useState<Exclude<typeof queriedResult, undefined>>();
+  if (queriedResult !== undefined && queriedResult !== lastResult) {
+    setLastResult(queriedResult);
+  }
+  const result = queriedResult ?? lastResult;
   const agents = useQuery(
     api.purchasing.listAssignableAgents,
     result?.permissions.canReassign ? {} : "skip",
