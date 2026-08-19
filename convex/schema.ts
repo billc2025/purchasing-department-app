@@ -46,6 +46,7 @@ export default defineSchema({
     departmentId: v.optional(v.id("departments")),
     locationId: v.optional(v.id("locations")),
     timezone: v.string(),
+    preferredLanguage: v.optional(v.union(v.literal("en"), v.literal("es"))),
     deactivatedAt: v.optional(v.number()),
     lastSeenAt: v.optional(v.number()),
     createdAt: v.number(),

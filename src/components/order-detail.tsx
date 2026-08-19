@@ -5,6 +5,7 @@ import { useQuery } from "convex/react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/components/language-provider";
 
 export function OrderDetail({ orderId }: { orderId: string }) {
   const order = useQuery(api.orders.detail, { orderId: orderId as never });
@@ -13,7 +14,8 @@ export function OrderDetail({ orderId }: { orderId: string }) {
   const [reason, setReason] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  if (order === undefined) return <p>Loading order…</p>;
+  const { t, formatCurrency, formatDate, statusLabel } = useLanguage();
+  if (order === undefined) return <p>{t("loadingOrder")}</p>;
   return (
     <article className="mx-auto max-w-4xl">
       <div className="rounded-2xl border bg-card p-6 sm:p-8">
@@ -21,47 +23,42 @@ export function OrderDetail({ orderId }: { orderId: string }) {
         <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-2xl font-semibold">{order.purpose}</h2>
           <span className="rounded-full bg-muted px-3 py-1 text-sm">
-            {order.status.replaceAll("_", " ")}
+            {statusLabel(order.status)}
           </span>
         </div>
         <dl className="mt-6 grid gap-4 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-muted-foreground">Requested for</dt>
+            <dt className="text-muted-foreground">{t("requestedFor")}</dt>
             <dd>{order.requestedForName}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Created by</dt>
+            <dt className="text-muted-foreground">{t("createdBy")}</dt>
             <dd>{order.createdByName}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Needed by</dt>
-            <dd>{new Date(order.requiredAt).toLocaleString()}</dd>
+            <dt className="text-muted-foreground">{t("neededBy")}</dt>
+            <dd>{formatDate(order.requiredAt)}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Billing</dt>
+            <dt className="text-muted-foreground">{t("billing")}</dt>
             <dd>
               {order.billingResponsibility === "client"
-                ? `Client — ${order.clientBillingReference}`
-                : "Internal cost"}
+                ? `${t("client")} — ${order.clientBillingReference}`
+                : t("internalCost")}
             </dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Total order budget</dt>
+            <dt className="text-muted-foreground">{t("totalOrderBudget")}</dt>
             <dd>
-              {new Intl.NumberFormat(undefined, {
-                style: "currency",
-                currency: order.currency,
-              }).format(order.estimatedAmountMinor / 100)}
+              {formatCurrency(order.estimatedAmountMinor, order.currency)}
             </dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Lead time</dt>
-            <dd>
-              {order.isLate ? "Late — exception review required" : "Compliant"}
-            </dd>
+            <dt className="text-muted-foreground">{t("leadTime")}</dt>
+            <dd>{order.isLate ? t("lateReview") : t("compliant")}</dd>
           </div>
         </dl>
-        <h3 className="mt-8 font-semibold">Items</h3>
+        <h3 className="mt-8 font-semibold">{t("items")}</h3>
         <div className="mt-3 divide-y rounded-xl border">
           {order.items.map((item: (typeof order.items)[number]) => (
             <div
@@ -76,25 +73,27 @@ export function OrderDetail({ orderId }: { orderId: string }) {
                 <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
                   <div>
                     <dt className="text-xs text-muted-foreground">
-                      Preferred vendor
+                      {t("preferredVendor")}
                     </dt>
-                    <dd>{item.preferredVendor || "No preference"}</dd>
+                    <dd>{item.preferredVendor || t("noPreference")}</dd>
                   </div>
                   <div>
                     <dt className="text-xs text-muted-foreground">
-                      Estimated item cost
+                      {t("estimatedItemCost")}
                     </dt>
                     <dd>
-                      {new Intl.NumberFormat(undefined, {
-                        style: "currency",
-                        currency: order.currency,
-                      }).format(item.estimatedAmountMinor / 100)}
+                      {formatCurrency(
+                        item.estimatedAmountMinor,
+                        order.currency,
+                      )}
                     </dd>
                   </div>
                 </dl>
               </div>
               <dl className="text-sm sm:text-right">
-                <dt className="text-xs text-muted-foreground">Quantity</dt>
+                <dt className="text-xs text-muted-foreground">
+                  {t("quantity")}
+                </dt>
                 <dd className="font-medium">
                   {item.quantity} {item.unit}
                 </dd>
@@ -104,7 +103,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
         </div>
         {order.comments && (
           <div className="mt-6">
-            <h3 className="font-semibold">Comments</h3>
+            <h3 className="font-semibold">{t("comments")}</h3>
             <p className="mt-2 text-sm text-muted-foreground">
               {order.comments}
             </p>
@@ -112,9 +111,11 @@ export function OrderDetail({ orderId }: { orderId: string }) {
         )}
         {order.permissions.canOverlordCancel && (
           <section className="mt-8 rounded-xl border border-red-200 bg-red-50 p-4">
-            <h3 className="font-semibold text-red-900">Overlord controls</h3>
+            <h3 className="font-semibold text-red-900">
+              {t("overlordControls")}
+            </h3>
             <p className="mt-1 text-sm text-red-800">
-              Cancellation preserves this order and its complete audit history.
+              {t("cancellationPreserves")}
             </p>
             {!showCancel ? (
               <Button
@@ -122,12 +123,12 @@ export function OrderDetail({ orderId }: { orderId: string }) {
                 variant="destructive"
                 onClick={() => setShowCancel(true)}
               >
-                Cancel order
+                {t("cancelOrder")}
               </Button>
             ) : (
               <div className="mt-4 flex flex-wrap items-end gap-3">
                 <label className="min-w-64 flex-1 text-sm text-red-950">
-                  Required cancellation reason
+                  {t("cancellationReason")}
                   <input
                     className="mt-1 w-full rounded-md border bg-white px-3 py-2"
                     value={reason}
@@ -145,24 +146,24 @@ export function OrderDetail({ orderId }: { orderId: string }) {
                         orderId: orderId as never,
                         reason,
                       });
-                      setMessage("Order cancelled. History was preserved.");
+                      setMessage(t("cancelledPreserved"));
                       setShowCancel(false);
                       setReason("");
                     } catch (error) {
                       setMessage(
                         error instanceof Error
                           ? error.message
-                          : "Unable to cancel order",
+                          : t("unableCancel"),
                       );
                     } finally {
                       setBusy(false);
                     }
                   }}
                 >
-                  Confirm cancellation
+                  {t("confirmCancellation")}
                 </Button>
                 <Button variant="ghost" onClick={() => setShowCancel(false)}>
-                  Keep order
+                  {t("keepOrder")}
                 </Button>
               </div>
             )}

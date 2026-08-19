@@ -3,33 +3,31 @@
 import Link from "next/link";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { useLanguage } from "@/components/language-provider";
 
-const statusLabels: Record<string, string> = {
-  draft: "Draft",
-  unassigned: "Submitted",
-  exception_pending: "Exception review",
-  cancelled: "Cancelled",
-};
 export function MyOrders() {
   const orders = useQuery(api.orders.listMine);
-  if (orders === undefined) return <p>Loading your orders…</p>;
+  const { t, formatCurrency, formatDate, statusLabel } = useLanguage();
+  if (orders === undefined) return <p>{t("loadingOrders")}</p>;
   return (
     <div>
       <div className="flex items-end justify-between">
         <div>
-          <p className="text-sm text-muted-foreground">Purchasing activity</p>
-          <h2 className="text-2xl font-semibold">My orders</h2>
+          <p className="text-sm text-muted-foreground">
+            {t("purchasingActivity")}
+          </p>
+          <h2 className="text-2xl font-semibold">{t("myOrders")}</h2>
         </div>
         <Link
           href="/app/orders/new"
           className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
         >
-          New order
+          {t("newOrder")}
         </Link>
       </div>
       {orders.length === 0 ? (
         <div className="mt-6 rounded-xl border border-dashed p-8 text-center text-muted-foreground">
-          You have not placed an order yet.
+          {t("noOrders")}
         </div>
       ) : (
         <div className="mt-6 grid gap-3">
@@ -44,22 +42,19 @@ export function MyOrders() {
                 <p className="text-sm text-muted-foreground">{order.purpose}</p>
               </div>
               <div className="text-sm">
-                <p>{statusLabels[order.status] ?? order.status}</p>
+                <p>{statusLabel(order.status)}</p>
                 <p className="text-muted-foreground">
                   {order.billingResponsibility === "client"
-                    ? `Client: ${order.clientBillingReference}`
-                    : "Internal cost"}
+                    ? `${t("client")}: ${order.clientBillingReference}`
+                    : t("internalCost")}
                 </p>
               </div>
               <div className="text-sm sm:text-right">
                 <p>
-                  {new Intl.NumberFormat(undefined, {
-                    style: "currency",
-                    currency: order.currency,
-                  }).format(order.estimatedAmountMinor / 100)}
+                  {formatCurrency(order.estimatedAmountMinor, order.currency)}
                 </p>
                 <p className="text-muted-foreground">
-                  Due {new Date(order.requiredAt).toLocaleString()}
+                  {t("due")} {formatDate(order.requiredAt)}
                 </p>
               </div>
             </Link>

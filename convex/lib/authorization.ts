@@ -23,6 +23,7 @@ export type AuthorizedUser = {
   isActive: boolean;
   isProtectedPrincipal: boolean;
   timezone?: string;
+  preferredLanguage?: "en" | "es";
 };
 
 export function assertProvisionedActiveUser(

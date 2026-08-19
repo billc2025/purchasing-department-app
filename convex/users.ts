@@ -23,6 +23,7 @@ export const current = queryGeneric({
     return {
       displayName: user.displayName,
       role: user.role,
+      preferredLanguage: user.preferredLanguage ?? "en",
       canAccessSystemControl: user.isProtectedPrincipal,
       canViewPurchasingBucket: [
         "receptionist",
@@ -32,6 +33,18 @@ export const current = queryGeneric({
         "overlord",
       ].includes(role),
     };
+  },
+});
+
+export const setPreferredLanguage = mutationGeneric({
+  args: { language: v.union(v.literal("en"), v.literal("es")) },
+  handler: async (ctx, args) => {
+    const user = await requireActiveUser(ctx);
+    await ctx.db.patch(user._id as any, {
+      preferredLanguage: args.language,
+      updatedAt: Date.now(),
+    });
+    return args.language;
   },
 });
 

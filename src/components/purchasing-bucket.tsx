@@ -5,23 +5,24 @@ import { useMutation, useQuery } from "convex/react";
 import Link from "next/link";
 import { api } from "../../convex/_generated/api";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { useLanguage } from "@/components/language-provider";
 
 const filters = [
-  ["unassigned", "Unassigned"],
-  ["assigned_to_me", "Assigned to Me"],
-  ["all_active", "All Active"],
-  ["due_today", "Due Today"],
-  ["upcoming", "Upcoming"],
-  ["waiting_for_requester", "Waiting for Requester"],
-  ["exception_pending", "Exception Pending"],
-  ["ready_for_reception", "Ready for Reception"],
-  ["partially_fulfilled", "Partially Fulfilled"],
-  ["overdue", "Overdue"],
-  ["completed", "Completed"],
-  ["cancelled", "Cancelled"],
+  "unassigned",
+  "assigned_to_me",
+  "all_active",
+  "due_today",
+  "upcoming",
+  "waiting_for_requester",
+  "exception_pending",
+  "ready_for_reception",
+  "partially_fulfilled",
+  "overdue",
+  "completed",
+  "cancelled",
 ] as const;
 
-type Filter = (typeof filters)[number][0];
+type Filter = (typeof filters)[number];
 type Row = {
   id: string;
   orderNumber: string;
@@ -47,7 +48,12 @@ function dayBounds() {
   return { todayStart: start.getTime(), todayEnd: end.getTime() };
 }
 
-function timeRemaining(requiredAt: number, now: number) {
+function timeRemaining(
+  requiredAt: number,
+  now: number,
+  overdueLabel: string,
+  remainingLabel: string,
+) {
   const difference = requiredAt - now;
   const absoluteMinutes = Math.floor(Math.abs(difference) / 60_000);
   const days = Math.floor(absoluteMinutes / 1_440);
@@ -58,23 +64,26 @@ function timeRemaining(requiredAt: number, now: number) {
     : hours
       ? `${hours}h ${minutes}m`
       : `${minutes}m`;
-  return difference < 0 ? `${value} overdue` : `${value} remaining`;
+  return difference < 0
+    ? `${value} ${overdueLabel}`
+    : `${value} ${remainingLabel}`;
 }
 
 function StatusBadges({ row, now }: { row: Row; now: number }) {
+  const { t, statusLabel } = useLanguage();
   return (
     <div className="flex flex-wrap gap-1.5">
       <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium">
-        {row.status.replaceAll("_", " ")}
+        {statusLabel(row.status)}
       </span>
       {(row.isLate || row.requiredAt < now) && (
         <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800">
-          {row.requiredAt < now ? "Overdue" : "Late"}
+          {row.requiredAt < now ? t("overdue") : t("late")}
         </span>
       )}
       {row.hasMissingInformation && (
         <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900">
-          Missing information
+          {t("missingInformation")}
         </span>
       )}
     </div>
@@ -82,6 +91,7 @@ function StatusBadges({ row, now }: { row: Row; now: number }) {
 }
 
 export function PurchasingBucket() {
+  const { t, formatDate } = useLanguage();
   const [filter, setFilter] = useState<Filter>("unassigned");
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
@@ -93,6 +103,20 @@ export function PurchasingBucket() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [bounds] = useState(() => dayBounds());
+  const filterLabels: Record<Filter, string> = {
+    unassigned: t("unassigned"),
+    assigned_to_me: t("assignedToMe"),
+    all_active: t("allActive"),
+    due_today: t("dueToday"),
+    upcoming: t("upcoming"),
+    waiting_for_requester: t("waitingRequester"),
+    exception_pending: t("exceptionPending"),
+    ready_for_reception: t("readyReception"),
+    partially_fulfilled: t("partiallyFulfilled"),
+    overdue: t("overdue"),
+    completed: t("completed"),
+    cancelled: t("cancelled"),
+  };
   const result = useQuery(api.purchasing.listBucket, {
     filter,
     search: search || undefined,
@@ -124,11 +148,9 @@ export function PurchasingBucket() {
     setMessage("");
     try {
       await claim({ orderId: orderId as never });
-      setMessage("Order claimed. The bucket updated for everyone.");
+      setMessage(t("claimedMessage"));
     } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : "Unable to claim order",
-      );
+      setMessage(error instanceof Error ? error.message : t("unableClaim"));
     } finally {
       setBusy(false);
     }
@@ -141,21 +163,21 @@ export function PurchasingBucket() {
     try {
       if (action === "release") {
         await release({ orderId: actionOrderId as never, reason });
-        setMessage("Order released to the unassigned bucket.");
+        setMessage(t("releasedMessage"));
       } else {
         await reassign({
           orderId: actionOrderId as never,
           targetAgentId: targetAgentId as never,
           reason,
         });
-        setMessage("Order reassigned.");
+        setMessage(t("reassignedMessage"));
       }
       setActionOrderId(undefined);
       setReason("");
       setTargetAgentId("");
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "Unable to update assignment",
+        error instanceof Error ? error.message : t("unableAssignment"),
       );
     } finally {
       setBusy(false);
@@ -163,7 +185,7 @@ export function PurchasingBucket() {
   }
 
   if (result === undefined)
-    return <p aria-live="polite">Loading purchasing bucket…</p>;
+    return <p aria-live="polite">{t("loadingBucket")}</p>;
   const displayNow = now || result.serverNow;
 
   const actionButtons = (row: Row) => (
@@ -172,7 +194,7 @@ export function PurchasingBucket() {
         className={buttonVariants({ size: "sm", variant: "outline" })}
         href={`/app/orders/${row.id}`}
       >
-        View
+        {t("view")}
       </Link>
       {result.permissions.canClaim && row.status === "unassigned" && (
         <Button
@@ -180,7 +202,7 @@ export function PurchasingBucket() {
           disabled={busy}
           onClick={() => void claimOrder(row.id)}
         >
-          Claim
+          {t("claim")}
         </Button>
       )}
       {row.assignedAgentId === result.actorId && row.status === "assigned" && (
@@ -192,7 +214,7 @@ export function PurchasingBucket() {
             setActionOrderId(row.id);
           }}
         >
-          Release
+          {t("release")}
         </Button>
       )}
       {result.permissions.canReassign && row.status === "assigned" && (
@@ -204,7 +226,7 @@ export function PurchasingBucket() {
             setActionOrderId(row.id);
           }}
         >
-          Reassign
+          {t("reassign")}
         </Button>
       )}
     </div>
@@ -215,19 +237,19 @@ export function PurchasingBucket() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-muted-foreground">
-            Live operations
+            {t("liveOperations")}
           </p>
-          <h2 className="text-2xl font-semibold">Purchasing bucket</h2>
+          <h2 className="text-2xl font-semibold">{t("bucketTitle")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Prioritized automatically and updated without refreshing.
+            {t("bucketSubtitle")}
           </p>
         </div>
         <label className="w-full max-w-sm text-sm">
-          Search orders
+          {t("searchOrders")}
           <input
             type="search"
             className={`${inputClass} mt-1 w-full`}
-            placeholder="Order, requester, category, or location"
+            placeholder={t("searchPlaceholder")}
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);
@@ -238,15 +260,15 @@ export function PurchasingBucket() {
       </div>
 
       <label className="mt-5 block text-sm md:hidden">
-        View
+        {t("view")}
         <select
           className={`${inputClass} mt-1 w-full`}
           value={filter}
           onChange={(event) => resetPage(event.target.value as Filter)}
         >
-          {filters.map(([value, label]) => (
+          {filters.map((value) => (
             <option key={value} value={value}>
-              {label}
+              {filterLabels[value]}
             </option>
           ))}
         </select>
@@ -255,22 +277,21 @@ export function PurchasingBucket() {
         className="mt-5 hidden flex-wrap gap-2 md:flex"
         aria-label="Bucket views"
       >
-        {filters.map(([value, label]) => (
+        {filters.map((value) => (
           <Button
             key={value}
             size="sm"
             variant={filter === value ? "default" : "outline"}
             onClick={() => resetPage(value)}
           >
-            {label}
+            {filterLabels[value]}
           </Button>
         ))}
       </div>
 
       {result.permissions.readOnly && (
         <p className="mt-4 rounded-md border bg-muted p-3 text-sm">
-          Read-only access: your role can monitor this bucket but cannot change
-          assignments.
+          {t("readOnly")}
         </p>
       )}
       {message && (
@@ -285,19 +306,19 @@ export function PurchasingBucket() {
           aria-label={`${action} order`}
         >
           <h3 className="font-semibold">
-            {action === "release" ? "Release order" : "Reassign order"}
+            {action === "release" ? t("releaseOrder") : t("reassignOrder")}
           </h3>
           <div className="mt-3 flex flex-wrap items-end gap-3">
             {action === "reassign" && (
               <label className="text-sm">
-                Purchasing agent
+                {t("purchasingAgent")}
                 <select
                   required
                   className={`${inputClass} mt-1 block min-w-52`}
                   value={targetAgentId}
                   onChange={(event) => setTargetAgentId(event.target.value)}
                 >
-                  <option value="">Select agent</option>
+                  <option value="">{t("selectAgent")}</option>
                   {agents?.map((agent) => (
                     <option key={agent.id} value={agent.id}>
                       {agent.displayName}
@@ -307,7 +328,7 @@ export function PurchasingBucket() {
               </label>
             )}
             <label className="min-w-64 flex-1 text-sm">
-              Required reason
+              {t("requiredReason")}
               <input
                 required
                 className={`${inputClass} mt-1 w-full`}
@@ -323,10 +344,11 @@ export function PurchasingBucket() {
               }
               onClick={() => void submitAction()}
             >
-              Confirm {action}
+              {t("confirm")}{" "}
+              {action === "release" ? t("release") : t("reassign")}
             </Button>
             <Button variant="ghost" onClick={() => setActionOrderId(undefined)}>
-              Cancel
+              {t("cancel")}
             </Button>
           </div>
         </section>
@@ -334,7 +356,7 @@ export function PurchasingBucket() {
 
       {result.rows.length === 0 ? (
         <div className="mt-6 rounded-xl border border-dashed p-10 text-center text-muted-foreground">
-          No orders match this view.
+          {t("noBucketOrders")}
         </div>
       ) : (
         <>
@@ -342,12 +364,12 @@ export function PurchasingBucket() {
             <table className="w-full text-left text-sm">
               <thead className="bg-muted text-xs uppercase text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-3">Order</th>
-                  <th className="px-4 py-3">Due</th>
-                  <th className="px-4 py-3">Details</th>
-                  <th className="px-4 py-3">Assignment</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Actions</th>
+                  <th className="px-4 py-3">{t("order")}</th>
+                  <th className="px-4 py-3">{t("due")}</th>
+                  <th className="px-4 py-3">{t("details")}</th>
+                  <th className="px-4 py-3">{t("assignment")}</th>
+                  <th className="px-4 py-3">{t("status")}</th>
+                  <th className="px-4 py-3">{t("actions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -367,10 +389,15 @@ export function PurchasingBucket() {
                             : ""
                         }
                       >
-                        {timeRemaining(row.requiredAt, displayNow)}
+                        {timeRemaining(
+                          row.requiredAt,
+                          displayNow,
+                          t("overdue").toLocaleLowerCase(),
+                          t("remaining"),
+                        )}
                       </span>
                       <span className="mt-1 block text-xs text-muted-foreground">
-                        {new Date(row.requiredAt).toLocaleString()}
+                        {formatDate(row.requiredAt)}
                       </span>
                     </td>
                     <td className="px-4 py-4">
@@ -380,7 +407,7 @@ export function PurchasingBucket() {
                       </span>
                     </td>
                     <td className="px-4 py-4">
-                      {row.assignee ?? "Unassigned"}
+                      {row.assignee ?? t("unassigned")}
                     </td>
                     <td className="px-4 py-4">
                       <StatusBadges row={row} now={displayNow} />
@@ -405,22 +432,33 @@ export function PurchasingBucket() {
                 </div>
                 <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
                   <div>
-                    <dt className="text-xs text-muted-foreground">Due</dt>
-                    <dd>{timeRemaining(row.requiredAt, displayNow)}</dd>
+                    <dt className="text-xs text-muted-foreground">
+                      {t("due")}
+                    </dt>
+                    <dd>
+                      {timeRemaining(
+                        row.requiredAt,
+                        displayNow,
+                        t("overdue").toLocaleLowerCase(),
+                        t("remaining"),
+                      )}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-xs text-muted-foreground">
-                      Assignment
+                      {t("assignment")}
                     </dt>
-                    <dd>{row.assignee ?? "Unassigned"}</dd>
+                    <dd>{row.assignee ?? t("unassigned")}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-muted-foreground">Category</dt>
+                    <dt className="text-xs text-muted-foreground">
+                      {t("category")}
+                    </dt>
                     <dd>{row.category}</dd>
                   </div>
                   <div>
                     <dt className="text-xs text-muted-foreground">
-                      Requester / location
+                      {t("requesterLocation")}
                     </dt>
                     <dd>
                       {row.requester} · {row.location}
@@ -438,7 +476,7 @@ export function PurchasingBucket() {
         <span>
           {result.total
             ? `${offset + 1}–${Math.min(offset + 25, result.total)} of ${result.total}`
-            : "0 orders"}
+            : `0 ${t("orders")}`}
         </span>
         <div className="flex gap-2">
           <Button
@@ -447,7 +485,7 @@ export function PurchasingBucket() {
             disabled={offset === 0}
             onClick={() => setOffset(Math.max(0, offset - 25))}
           >
-            Previous
+            {t("previous")}
           </Button>
           <Button
             size="sm"
@@ -455,7 +493,7 @@ export function PurchasingBucket() {
             disabled={!result.hasMore}
             onClick={() => setOffset(offset + 25)}
           >
-            Next
+            {t("next")}
           </Button>
         </div>
       </div>
