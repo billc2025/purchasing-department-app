@@ -12,7 +12,21 @@ export const visibleRoleValidator = v.union(
 export const orderStatusValidator = v.union(
   v.literal("draft"),
   v.literal("unassigned"),
+  v.literal("assigned"),
+  v.literal("in_review"),
+  v.literal("waiting_for_requester"),
+  v.literal("approved_to_purchase"),
+  v.literal("purchasing"),
+  v.literal("partially_fulfilled"),
+  v.literal("purchased"),
+  v.literal("in_transit"),
+  v.literal("received"),
+  v.literal("ready_for_reception"),
+  v.literal("completed"),
   v.literal("exception_pending"),
+  v.literal("receipt_issue_reported"),
+  v.literal("cancellation_requested"),
+  v.literal("rejected"),
   v.literal("cancelled"),
 );
 
@@ -118,6 +132,9 @@ export default defineSchema({
     estimatedAmountMinor: v.number(),
     currency: v.string(),
     comments: v.optional(v.string()),
+    assignedAgentId: v.optional(v.id("users")),
+    assignedAt: v.optional(v.number()),
+    hasMissingInformation: v.optional(v.boolean()),
     status: orderStatusValidator,
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -125,7 +142,29 @@ export default defineSchema({
     .index("by_order_number", ["orderNumber"])
     .index("by_requester_created_at", ["requesterUserId", "createdAt"])
     .index("by_requested_for_created_at", ["requestedForUserId", "createdAt"])
-    .index("by_status_required_at", ["status", "requiredAt"]),
+    .index("by_status_required_at", ["status", "requiredAt"])
+    .index("by_assignee_status_required_at", [
+      "assignedAgentId",
+      "status",
+      "requiredAt",
+    ])
+    .index("by_required_at", ["requiredAt"]),
+
+  assignmentEvents: defineTable({
+    orderId: v.id("orders"),
+    fromAgentId: v.optional(v.id("users")),
+    toAgentId: v.optional(v.id("users")),
+    action: v.union(
+      v.literal("claimed"),
+      v.literal("released"),
+      v.literal("reassigned"),
+    ),
+    actorUserId: v.id("users"),
+    reason: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_order_created_at", ["orderId", "createdAt"])
+    .index("by_agent_created_at", ["toAgentId", "createdAt"]),
 
   orderItems: defineTable({
     orderId: v.id("orders"),

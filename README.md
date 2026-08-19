@@ -4,7 +4,7 @@ Purchasing Hub is an internal purchasing-request and fulfillment system for fewe
 
 Each order also records who ultimately bears its cost: the identified client is billed, or the organization absorbs it internally. This classification is required at order entry and protected from silent reclassification after submission.
 
-This repository contains the approved architecture, Phase 1 authentication/authorization foundation, and Phase 2 order-entry workflow. The controlling specification is [`Purchasing_Hub_Codex_Build_Package.md`](Purchasing_Hub_Codex_Build_Package.md).
+This repository contains the approved architecture, Phase 1 authentication/authorization foundation, Phase 2 order-entry workflow, and Phase 3 real-time purchasing bucket. The controlling specification is [`Purchasing_Hub_Codex_Build_Package.md`](Purchasing_Hub_Codex_Build_Package.md).
 
 ## Approved stack
 
@@ -51,6 +51,14 @@ The first Overlord identity is matched exclusively against the protected Convex 
 An authorized administrator or the protected system owner can select **Add sample data** on the application dashboard. This idempotently creates editable development examples for Food Delivery (one hour), Event Purchase (three continuous calendar days), General Operations, and Main Office. They are samples, not fixed production policy.
 
 Phase 2 accepts JPEG, PNG, and WebP reference images up to 8 MB. File metadata is verified from Convex storage on the server. Draft attachments may be removed; access to active attachments follows order authorization.
+
+The storage model supports associating an attachment with an individual order item, but the current upload UI associates reference images with the order. Per-item upload controls remain a documented follow-up gap.
+
+## Phase 3 purchasing bucket
+
+Receptionists, purchasing agents, administrators, Super Admins, and the protected system owner can monitor a bounded real-time operational bucket. Purchasing agents claim only for themselves; assigned agents release with a reason; Super Admins and the protected owner reassign to active purchasing agents with a reason. Convex mutations serialize assignment changes, and append-only assignment and audit events preserve the history.
+
+Priority is deterministic: overdue active work, late/exception work, unassigned work, then remaining active work; each group sorts by required time, order number, and stable ID. The UI includes the specification's operational filters, search, 25-row bounded pages, desktop tables, and mobile cards.
 
 ## Environment-variable names
 

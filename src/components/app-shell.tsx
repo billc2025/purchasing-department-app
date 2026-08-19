@@ -15,8 +15,9 @@ import { Button } from "@/components/ui/button";
 import { MyOrders } from "@/components/my-orders";
 import { OrderEntry } from "@/components/order-entry";
 import { OrderDetail } from "@/components/order-detail";
+import { PurchasingBucket } from "@/components/purchasing-bucket";
 
-type View = "dashboard" | "new" | "mine" | "detail";
+type View = "dashboard" | "new" | "mine" | "detail" | "purchasing";
 
 function Workspace({ view, orderId }: { view: View; orderId?: string }) {
   const profile = useQuery(api.users.current);
@@ -39,6 +40,14 @@ function Workspace({ view, orderId }: { view: View; orderId?: string }) {
         </div>
         <div className="flex items-center gap-3">
           <nav aria-label="Primary" className="flex gap-2 text-sm">
+            {profile.canViewPurchasingBucket && (
+              <Link
+                className="rounded-md px-3 py-2 hover:bg-muted"
+                href="/app/purchasing"
+              >
+                Purchasing bucket
+              </Link>
+            )}
             <Link
               className="rounded-md px-3 py-2 hover:bg-muted"
               href="/app/orders"
@@ -59,6 +68,7 @@ function Workspace({ view, orderId }: { view: View; orderId?: string }) {
         {view === "new" && <OrderEntry />}
         {view === "mine" && <MyOrders />}
         {view === "detail" && orderId && <OrderDetail orderId={orderId} />}
+        {view === "purchasing" && <PurchasingBucket />}
         {view === "dashboard" && (
           <div className="grid gap-5 md:grid-cols-2">
             <Link
@@ -99,6 +109,20 @@ function Workspace({ view, orderId }: { view: View; orderId?: string }) {
                   Add sample data
                 </Button>
               </div>
+            )}
+            {profile.canViewPurchasingBucket && (
+              <Link
+                href="/app/purchasing"
+                className="rounded-2xl border bg-card p-7 hover:border-foreground/30"
+              >
+                <p className="text-sm text-muted-foreground">Live operations</p>
+                <h2 className="mt-1 text-xl font-semibold">
+                  Purchasing bucket
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Claim and prioritize submitted purchasing work in real time.
+                </p>
+              </Link>
             )}
           </div>
         )}

@@ -7,6 +7,7 @@ import { v } from "convex/values";
 import { appendAuditEvent } from "./lib/audit";
 import {
   canManageVisibleUser,
+  effectiveRole,
   publicUserProjection,
   requireActiveUser,
   requireRole,
@@ -18,10 +19,18 @@ export const current = queryGeneric({
   args: {},
   handler: async (ctx) => {
     const user = await requireActiveUser(ctx);
+    const role = effectiveRole(user);
     return {
       displayName: user.displayName,
       role: user.role,
       canAccessSystemControl: user.isProtectedPrincipal,
+      canViewPurchasingBucket: [
+        "receptionist",
+        "purchasing_agent",
+        "admin",
+        "super_admin",
+        "overlord",
+      ].includes(role),
     };
   },
 });

@@ -12,8 +12,10 @@ import type * as configuration from "../configuration.js";
 import type * as http from "../http.js";
 import type * as lib_audit from "../lib/audit.js";
 import type * as lib_authorization from "../lib/authorization.js";
+import type * as lib_bucket from "../lib/bucket.js";
 import type * as lib_orderValidation from "../lib/orderValidation.js";
 import type * as orders from "../orders.js";
+import type * as purchasing from "../purchasing.js";
 import type * as users from "../users.js";
 
 import type {
@@ -27,8 +29,10 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "lib/audit": typeof lib_audit;
   "lib/authorization": typeof lib_authorization;
+  "lib/bucket": typeof lib_bucket;
   "lib/orderValidation": typeof lib_orderValidation;
   orders: typeof orders;
+  purchasing: typeof purchasing;
   users: typeof users;
 }>;
 
