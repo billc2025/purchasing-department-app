@@ -57,6 +57,25 @@ export function OrderDetail({ orderId }: { orderId: string }) {
                 <p className="text-sm text-muted-foreground">
                   {item.specification}
                 </p>
+                <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs text-muted-foreground">
+                      Preferred vendor
+                    </dt>
+                    <dd>{item.preferredVendor || "No preference"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">
+                      Estimated amount
+                    </dt>
+                    <dd>
+                      {new Intl.NumberFormat(undefined, {
+                        style: "currency",
+                        currency: order.currency,
+                      }).format(item.estimatedAmountMinor / 100)}
+                    </dd>
+                  </div>
+                </dl>
               </div>
               <p className="text-sm">
                 {item.quantity} {item.unit}
