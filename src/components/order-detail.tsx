@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { useMutation } from "convex/react";
@@ -111,6 +112,14 @@ export function OrderDetail({ orderId }: { orderId: string }) {
                 {order.comments}
               </p>
             </div>
+          )}
+          {order.permissions.canEditDraft && (
+            <Link
+              className="mt-6 inline-flex rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+              href={`/app/orders/new?orderId=${orderId}`}
+            >
+              {t("editAndResubmit")}
+            </Link>
           )}
           {order.permissions.canOverlordCancel && (
             <section className="mt-8 rounded-xl border border-red-200 bg-red-50 p-4">

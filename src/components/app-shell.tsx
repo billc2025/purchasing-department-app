@@ -21,6 +21,7 @@ import { ReportsDashboard } from "@/components/reports-dashboard";
 import { ReportsErrorBoundary } from "@/components/reports-error-boundary";
 import { NotificationCenter } from "@/components/notification-center";
 import { ConfigurationWorkspace } from "@/components/configuration-workspace";
+import { ApprovalQueue } from "@/components/approval-queue";
 import {
   LanguageProvider,
   LanguageSelector,
@@ -34,7 +35,8 @@ type View =
   | "detail"
   | "purchasing"
   | "reports"
-  | "settings";
+  | "settings"
+  | "approvals";
 
 function Workspace({ view, orderId }: { view: View; orderId?: string }) {
   const profile = useQuery(api.users.current);
@@ -58,6 +60,7 @@ function WorkspaceContent({
     canViewPurchasingBucket: boolean;
     canViewReports: boolean;
     canManageConfiguration: boolean;
+    canApproveOrders: boolean;
   };
   view: View;
   orderId?: string;
@@ -124,6 +127,14 @@ function WorkspaceContent({
                 {language === "es" ? "Reportes" : "Reports"}
               </Link>
             )}
+            {profile.canApproveOrders && (
+              <Link
+                className="rounded-md px-3 py-2 hover:bg-muted"
+                href="/app/approvals"
+              >
+                {language === "es" ? "Aprobaciones" : "Approvals"}
+              </Link>
+            )}
             {profile.canManageConfiguration && (
               <Link
                 className="rounded-md px-3 py-2 hover:bg-muted"
@@ -151,7 +162,7 @@ function WorkspaceContent({
         </div>
       </header>
       <section className="py-8">
-        {view === "new" && <OrderEntry />}
+        {view === "new" && <OrderEntry initialOrderId={orderId} />}
         {view === "mine" && <MyOrders />}
         {view === "detail" && orderId && <OrderDetail orderId={orderId} />}
         {view === "purchasing" && <PurchasingBucket />}
@@ -173,6 +184,14 @@ function WorkspaceContent({
         {view === "settings" &&
           (profile.canManageConfiguration ? (
             <ConfigurationWorkspace />
+          ) : (
+            <StateCard
+              title={language === "es" ? "Acceso denegado" : "Access denied"}
+            />
+          ))}
+        {view === "approvals" &&
+          (profile.canApproveOrders ? (
+            <ApprovalQueue />
           ) : (
             <StateCard
               title={language === "es" ? "Acceso denegado" : "Access denied"}

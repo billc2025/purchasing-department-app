@@ -1,7 +1,12 @@
 import { AppShell } from "@/components/app-shell";
 import { auth } from "@clerk/nextjs/server";
 
-export default async function NewOrderPage() {
+export default async function NewOrderPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ orderId?: string }>;
+}) {
   await auth.protect();
-  return <AppShell view="new" />;
+  const { orderId } = await searchParams;
+  return <AppShell view="new" orderId={orderId} />;
 }

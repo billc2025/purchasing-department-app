@@ -58,6 +58,8 @@ The storage model supports associating an attachment with an individual order it
 
 Receptionists, purchasing agents, administrators, Super Admins, and the protected system owner can monitor a bounded real-time operational bucket. Purchasing agents claim only for themselves; assigned agents release with a reason; Super Admins and the protected owner reassign to active purchasing agents with a reason. Convex mutations serialize assignment changes, and append-only assignment and audit events preserve the history.
 
+Every requester submission first enters a dedicated approval queue visible to Super Admins and the protected system owner. Approve releases it to purchasing, return restores an editable draft, and reject closes it without release. Every decision requires a reason, is audited, and cannot be made by the person who requested or created the order. Late-date approval is captured in the same decision. Pending requests never appear in the purchasing bucket.
+
 Priority is deterministic: overdue active work, late/exception work, unassigned work, then remaining active work; each group sorts by required time, order number, and stable ID. The UI includes the specification's operational filters, search, 25-row bounded pages, desktop tables, and mobile cards.
 
 The application header includes an English/Español selector. Each user's preference is stored in their protected Convex profile and follows them between screens and sessions. Application labels, statuses, dates, currency, and client-side guidance are localized; administrator-configured names and user-entered order content remain exactly as entered.

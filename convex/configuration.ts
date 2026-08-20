@@ -399,6 +399,7 @@ export const resetDevelopmentOrders = mutationGeneric({
       "orderComments",
       "statusEvents",
       "assignmentEvents",
+      "orderApprovalDecisions",
       "notifications",
       "changeRequests",
       "exceptionRequests",

@@ -8,11 +8,13 @@ Role abbreviations: **REQ** requester (own order), **REC** receptionist, **PA** 
 
 | From | Command → To | Allowed roles | Required conditions | Audit/reason |
 | --- | --- | --- | --- | --- |
-| `draft` | submit compliant → `unassigned` | REQ; REC on behalf; OVR | Valid order/items and billing responsibility; client reference present when client-billed; server lead-time compliant | Audit submission, billing classification, and rule snapshot |
-| `draft` | submit late → `exception_pending` | REQ; REC on behalf; OVR | Valid order/items and billing responsibility; client reference present when client-billed; server lead-time violation | Audit late trigger, billing classification, and rule snapshot |
+| `draft` | submit → `pending_approval` | REQ; REC on behalf; OVR | Valid order/items and billing responsibility; client reference present when client-billed | Audit submission, billing classification, lead-time result, and rule snapshot |
 | `draft` | cancel → `cancelled` | REQ; authorized creator; OVR | Not submitted/purchased | Audit; cancellation reason required by final UI policy |
-| `exception_pending` | approve → `unassigned` | SA, OVR | Pending valid exception | Decision reason required; audit |
-| `exception_pending` | reject → `rejected` | SA, OVR | Pending valid exception | Decision reason required; audit |
+| `pending_approval` | approve → `unassigned` | SA, OVR | Reviewer is not requester/creator; pending valid request | Decision reason required; late exception is approved in the same decision; audit |
+| `pending_approval` | return → `draft` | SA, OVR | Reviewer is not requester/creator; corrections needed | Decision reason required; requester notified; audit |
+| `pending_approval` | reject → `rejected` | SA, OVR | Reviewer is not requester/creator; request should not proceed | Decision reason required; audit |
+| `exception_pending` | approve → `unassigned` | SA, OVR | Legacy pending valid exception | Decision reason required; audit |
+| `exception_pending` | reject → `rejected` | SA, OVR | Legacy pending valid exception | Decision reason required; audit |
 | `unassigned` | claim → `assigned` | PA for self, OVR | Atomic; no current assignment; eligible | Assignment + audit |
 | `unassigned` | direct cancel → `cancelled` | REQ, OVR | No purchase activity; cancellation policy permits | Reason and audit |
 | `assigned` | start review → `in_review` | assigned PA, OVR | Current assignment | Audit/status event |
@@ -35,7 +37,7 @@ Role abbreviations: **REQ** requester (own order), **REC** receptionist, **PA** 
 | `cancellation_requested` | reject → prior snapshotted state | SA, OVR | Original state still valid | Decision reason and audit |
 | `completed`/`cancelled`/`rejected` | correct record → invariant-valid state | SA, OVR | Dedicated correction/reversal; never ordinary edit | Reason, linked correction, audit |
 
-`submitted` is retained as a conceptual/event state but is normally resolved transactionally to `unassigned` or `exception_pending`. If implemented as a persisted status for asynchronous validation, only a server process may leave it, and it must not become a general client transition.
+Every newly submitted request persists as `pending_approval`. It is deliberately excluded from the purchasing bucket until a Super Admin or the protected Overlord approves it. Approval is separated from submission and self-approval is prohibited. `exception_pending` remains only for legacy records created before this gate; late requests are now disclosed and resolved within the order approval decision.
 
 Order status is derived or validated from item, assignment, exception, receiving, cancellation, and confirmation facts. A transition cannot claim `received` or `completed` merely because a client requests it.
 
@@ -65,6 +67,7 @@ Order status is derived or validated from item, assignment, exception, receiving
 - Receptionists may record receipt and only configured reception transitions; they cannot claim, assign, or approve exceptions.
 - Admin has no implied ability to operate orders or discover Overlord.
 - SA reassignment, overrides, and corrections require reasons. SA cannot discover or modify Overlord.
+- SA and Overlord may approve, return, or reject submitted orders, but neither may decide an order they requested or created.
 - Material requester changes after assignment use `changeRequests`; they do not mutate state directly.
 - Billing responsibility may be edited freely only while the order is a draft. After submission, reclassification requires an authorized correction command, a reason, prior/new values, and an audit event; it never occurs as a generic order edit.
 - After purchase begins, cancellation requires a request/decision and explicit outcomes for purchased items.

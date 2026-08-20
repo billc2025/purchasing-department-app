@@ -26,6 +26,7 @@ export type BucketOrder = {
 
 const inactiveStatuses = new Set([
   "draft",
+  "pending_approval",
   "completed",
   "cancelled",
   "rejected",

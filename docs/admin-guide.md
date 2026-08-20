@@ -21,6 +21,12 @@ Deactivation preserves historical records but blocks every protected backend cal
 
 The protected Overlord cannot be viewed, edited, assigned, or deactivated through ordinary administration. A configuration mismatch must be resolved through the protected deployment procedure.
 
+## Order approvals
+
+Every requester submission enters **Pending approval** and is hidden from the purchasing bucket. Super Admins and the protected Overlord review these requests under **Approvals** and must enter a reason before choosing **Approve**, **Return for changes**, or **Reject**.
+
+Approval releases the order to the unassigned purchasing bucket. Returning it restores an editable draft and notifies the requester; rejection retains the record without releasing it. The reviewer cannot decide an order they requested or created, including when the reviewer is the protected Overlord. Another authorized reviewer must handle that order. Late required-by dates are shown in the queue and an approval records the late exception in the same audited decision.
+
 ## Operational configuration
 
 Open **Settings** to manage:
@@ -40,7 +46,7 @@ Admins, Super Admins, and the protected owner can access Reports. Always select 
 
 ## Daily checks
 
-- Review exception, waiting-for-requester, overdue, and receipt-issue queues.
+- Review pending approvals, exceptions, waiting-for-requester, overdue, and receipt-issue queues.
 - Confirm unassigned work has coverage.
 - Review notification failures and Clerk webhook errors in Convex logs.
 - Investigate proof exceptions and budget/cancellation decisions through audit history.

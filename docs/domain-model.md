@@ -144,6 +144,12 @@ Indexes: `by_order_created_at`, `by_requester_created_at`, `by_outcome_created_a
 
 ## Requests and decisions
 
+### `orderApprovalDecisions`
+
+Append-only decision history for the mandatory pre-purchasing gate: order, reviewer, decision (`approved|returned|rejected`), required reason, whether the submitted required-by date was late, and timestamp. The order stores only its current projected status. Reviewers cannot decide orders they requested or created.
+
+Indexes: `by_order_created_at`, `by_reviewer_created_at`.
+
 ### `changeRequests`
 
 Order, requester/actor, material field snapshots before/requested, reason, status, decision maker/reason/timestamps, applied event. Direct clarification does not masquerade as a material change.
