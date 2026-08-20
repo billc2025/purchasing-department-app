@@ -8,8 +8,8 @@ Role abbreviations: **REQ** requester (own order), **REC** receptionist, **PA** 
 
 | From | Command → To | Allowed roles | Required conditions | Audit/reason |
 | --- | --- | --- | --- | --- |
-| `draft` | submit compliant → `unassigned` | REQ; REC on behalf; OVR | Valid order/items; server lead-time compliant | Audit submission and rule snapshot |
-| `draft` | submit late → `exception_pending` | REQ; REC on behalf; OVR | Valid order/items; server lead-time violation | Audit late trigger and rule snapshot |
+| `draft` | submit compliant → `unassigned` | REQ; REC on behalf; OVR | Valid order/items and billing responsibility; client reference present when client-billed; server lead-time compliant | Audit submission, billing classification, and rule snapshot |
+| `draft` | submit late → `exception_pending` | REQ; REC on behalf; OVR | Valid order/items and billing responsibility; client reference present when client-billed; server lead-time violation | Audit late trigger, billing classification, and rule snapshot |
 | `draft` | cancel → `cancelled` | REQ; authorized creator; OVR | Not submitted/purchased | Audit; cancellation reason required by final UI policy |
 | `exception_pending` | approve → `unassigned` | SA, OVR | Pending valid exception | Decision reason required; audit |
 | `exception_pending` | reject → `rejected` | SA, OVR | Pending valid exception | Decision reason required; audit |
@@ -66,6 +66,7 @@ Order status is derived or validated from item, assignment, exception, receiving
 - Admin has no implied ability to operate orders or discover Overlord.
 - SA reassignment, overrides, and corrections require reasons. SA cannot discover or modify Overlord.
 - Material requester changes after assignment use `changeRequests`; they do not mutate state directly.
+- Billing responsibility may be edited freely only while the order is a draft. After submission, reclassification requires an authorized correction command, a reason, prior/new values, and an audit event; it never occurs as a generic order edit.
 - After purchase begins, cancellation requires a request/decision and explicit outcomes for purchased items.
 - All quantities, transaction allocations, receipt allocations, and totals must reconcile before derived transitions.
 
@@ -76,4 +77,3 @@ For every command, tests must cover unauthenticated, inactive, wrong-role, wrong
 ## Deferred policy points
 
 The exact receptionist status allowlist, category/status edit cutoff, final post-purchase cancellation authority, and budget exception triggers remain versioned configuration/future decisions. No default threshold or hidden transition is authorized by this matrix.
-

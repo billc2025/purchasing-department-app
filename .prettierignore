@@ -1,0 +1,9 @@
+.next
+node_modules
+Purchasing_Hub_Codex_Build_Package.md
+docs/*.md
+convex/_generated
+next.config.ts
+src/app/globals.css
+src/components/ui/button.tsx
+src/lib/utils.ts

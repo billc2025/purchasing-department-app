@@ -42,15 +42,16 @@ Deliverables:
 
 - Administrative data for categories/rules, departments, and locations.
 - Multi-step, accessible, responsive multi-item order form and draft workflow.
+- Required order-level billing responsibility choice: client-billed or internal cost; client-billed orders capture and snapshot the required client reference.
 - Server-authoritative calendar lead-time validation and exception routing.
 - UTC/timezone and integer-minor-unit handling.
 - Authorized Convex File Storage upload/finalization/access.
 - My Orders/detail with ownership and on-behalf-of authorization.
-- Tests for multi-item/category invariants, time boundaries, files, IDOR, and timezone.
+- Tests for multi-item/category invariants, billing-responsibility validation and correction controls, time boundaries, files, IDOR, and timezone.
 
 Dependencies: Phase 1 identity/schema/auth; approved initial editable sample data (Food Delivery one hour, Event Purchase three days); final attachment allowlist/limits can remain configuration but safe development defaults must be documented.
 
-Exit: valid compliant and late orders follow distinct controlled paths; unauthorized reads/uploads fail; full verification passes.
+Exit: valid compliant and late orders follow distinct controlled paths; every submitted order has a valid billing responsibility and client-billed orders have a client reference; unauthorized reads/uploads or billing reclassification fail; full verification passes.
 
 ## Phase 3 — Purchasing bucket, atomic claiming, prioritization
 
@@ -79,6 +80,7 @@ Deliverables:
 - Server-separated shared comments and internal notes.
 - Purchase transactions, multi-item/multiple receipt relationships, proof requirements.
 - Minor-unit cost summaries and derived order state.
+- Billing-responsibility visibility in purchasing and financial summaries without implementing client invoicing or accounts receivable.
 - Transition, visibility, receipt, reconciliation, authorization, and audit tests.
 
 Dependencies: Phase 3 assignment ownership; Phase 2 files/items; approved transition matrix.
@@ -164,4 +166,3 @@ These are configuration or later approval gates. No implementation phase may sil
 ## Phase 1 blockers and owner actions
 
 There is no architectural blocker once Phase 0 is approved. Implementation requires the owner to authorize/create Clerk and Convex development resources and provide secret values through local/deployment secret stores, never chat, source, or committed files. Vercel authorization is not required until deployment work, though early preview setup may be chosen. Business decisions intentionally deferred above do not block Phase 1.
-
