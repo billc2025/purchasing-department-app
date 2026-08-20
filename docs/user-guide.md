@@ -37,3 +37,7 @@ Purchasing agents claim work from the purchasing bucket, review items individual
 ## Getting help
 
 If access is awaiting provisioning, inactive, or an order appears stale, do not create a duplicate immediately. Refresh once, note the order number and message, and contact an administrator.
+
+## Administrator invitation summary
+
+Administrators invite users through Clerk. Once an invitation is accepted, the new account appears under **Settings → Users and roles** as a Requester. An authorized administrator can then select the approved visible role, enter a reason, and save the audited change.

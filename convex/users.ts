@@ -66,10 +66,73 @@ export const listVisibleUsers = queryGeneric({
     const actor = await requireActiveUser(ctx);
     requireRole(actor, ["admin", "super_admin"]);
     const users = await ctx.db.query("users").take(100);
-    return users.flatMap((user) => {
-      const projected = publicUserProjection(user as any);
-      return projected ? [projected] : [];
+    const actorRole = effectiveRole(actor);
+    const assignableRoles =
+      actorRole === "admin"
+        ? visibleRoles.filter((role) =>
+            ["requester", "receptionist", "purchasing_agent"].includes(role),
+          )
+        : visibleRoles;
+    return {
+      assignableRoles,
+      users: users.flatMap((user) => {
+        const projected = publicUserProjection(user as any);
+        return projected
+          ? [
+              {
+                ...projected,
+                canManage:
+                  user._id !== actor._id &&
+                  canManageVisibleUser(actor, user as any),
+              },
+            ]
+          : [];
+      }),
+    };
+  },
+});
+
+export const changeVisibleUserRole = mutationGeneric({
+  args: {
+    userId: v.id("users"),
+    role: visibleRoleValidator,
+    reason: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const actor = requireRole(await requireActiveUser(ctx), [
+      "admin",
+      "super_admin",
+    ]);
+    const target = await ctx.db.get(args.userId);
+    if (
+      !target ||
+      !target.isActive ||
+      target.isProtectedPrincipal ||
+      target._id === actor._id ||
+      !canManageVisibleUser(actor, target as any)
+    )
+      throw new Error("User not found");
+    const actorRole = effectiveRole(actor);
+    if (
+      actorRole === "admin" &&
+      !["requester", "receptionist", "purchasing_agent"].includes(args.role)
+    )
+      throw new Error("Access denied");
+    const reason = args.reason.trim().replace(/\s+/g, " ").slice(0, 500);
+    if (!reason) throw new Error("A reason is required");
+    if (target.role === args.role)
+      throw new Error("User already has this role");
+    const now = Date.now();
+    await ctx.db.patch(target._id, { role: args.role, updatedAt: now });
+    await appendAuditEvent(ctx, actor, {
+      action: "user.role_changed",
+      entityType: "user",
+      entityId: String(target._id),
+      reason,
+      priorValues: { role: target.role },
+      newValues: { role: args.role },
     });
+    return { role: args.role };
   },
 });
 
