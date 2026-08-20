@@ -14,10 +14,12 @@ import type * as lib_audit from "../lib/audit.js";
 import type * as lib_authorization from "../lib/authorization.js";
 import type * as lib_bucket from "../lib/bucket.js";
 import type * as lib_orderValidation from "../lib/orderValidation.js";
+import type * as lib_reporting from "../lib/reporting.js";
 import type * as lifecycle from "../lifecycle.js";
 import type * as orders from "../orders.js";
 import type * as processing from "../processing.js";
 import type * as purchasing from "../purchasing.js";
+import type * as reports from "../reports.js";
 import type * as users from "../users.js";
 
 import type {
@@ -33,10 +35,12 @@ declare const fullApi: ApiFromModules<{
   "lib/authorization": typeof lib_authorization;
   "lib/bucket": typeof lib_bucket;
   "lib/orderValidation": typeof lib_orderValidation;
+  "lib/reporting": typeof lib_reporting;
   lifecycle: typeof lifecycle;
   orders: typeof orders;
   processing: typeof processing;
   purchasing: typeof purchasing;
+  reports: typeof reports;
   users: typeof users;
 }>;
 

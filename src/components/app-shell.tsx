@@ -17,13 +17,15 @@ import { MyOrders } from "@/components/my-orders";
 import { OrderEntry } from "@/components/order-entry";
 import { OrderDetail } from "@/components/order-detail";
 import { PurchasingBucket } from "@/components/purchasing-bucket";
+import { ReportsDashboard } from "@/components/reports-dashboard";
+import { ReportsErrorBoundary } from "@/components/reports-error-boundary";
 import {
   LanguageProvider,
   LanguageSelector,
   useLanguage,
 } from "@/components/language-provider";
 
-type View = "dashboard" | "new" | "mine" | "detail" | "purchasing";
+type View = "dashboard" | "new" | "mine" | "detail" | "purchasing" | "reports";
 
 function Workspace({ view, orderId }: { view: View; orderId?: string }) {
   const profile = useQuery(api.users.current);
@@ -45,6 +47,7 @@ function WorkspaceContent({
     displayName: string;
     canAccessSystemControl: boolean;
     canViewPurchasingBucket: boolean;
+    canViewReports: boolean;
   };
   view: View;
   orderId?: string;
@@ -101,6 +104,14 @@ function WorkspaceContent({
                 {t("purchasingBucket")}
               </Link>
             )}
+            {profile.canViewReports && (
+              <Link
+                className="rounded-md px-3 py-2 hover:bg-muted"
+                href="/app/reports"
+              >
+                {language === "es" ? "Reportes" : "Reports"}
+              </Link>
+            )}
             <Link
               className="rounded-md px-3 py-2 hover:bg-muted"
               href="/app/orders"
@@ -143,6 +154,21 @@ function WorkspaceContent({
         {view === "mine" && <MyOrders />}
         {view === "detail" && orderId && <OrderDetail orderId={orderId} />}
         {view === "purchasing" && <PurchasingBucket />}
+        {view === "reports" &&
+          (profile.canViewReports ? (
+            <ReportsErrorBoundary>
+              <ReportsDashboard />
+            </ReportsErrorBoundary>
+          ) : (
+            <StateCard
+              title={language === "es" ? "Acceso denegado" : "Access denied"}
+              detail={
+                language === "es"
+                  ? "Su función no tiene acceso a los reportes administrativos."
+                  : "Your role does not have access to administrative reports."
+              }
+            />
+          ))}
         {view === "dashboard" && (
           <div className="grid gap-5 md:grid-cols-2">
             <Link

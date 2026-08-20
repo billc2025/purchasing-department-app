@@ -32,6 +32,7 @@ export const current = queryGeneric({
         "super_admin",
         "overlord",
       ].includes(role),
+      canViewReports: ["admin", "super_admin", "overlord"].includes(role),
     };
   },
 });
