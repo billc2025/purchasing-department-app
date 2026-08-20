@@ -149,6 +149,59 @@ export const seedDevelopmentExamples = mutationGeneric({
   },
 });
 
+export const resetDevelopmentOrders = mutationGeneric({
+  args: { confirmation: v.string() },
+  handler: async (ctx, args) => {
+    const actor = await requireActiveUser(ctx);
+    if (!actor.isProtectedPrincipal) throw new Error("Access denied");
+    if (process.env.ALLOW_DEVELOPMENT_RESET !== "true")
+      throw new Error("Development reset is disabled for this deployment");
+    if (args.confirmation !== "DELETE TEST ORDERS")
+      throw new Error("Confirmation phrase does not match");
+
+    const [attachments, transactions, receivingEvents] = await Promise.all([
+      ctx.db.query("attachments").take(2_000),
+      ctx.db.query("purchaseTransactions").take(2_000),
+      ctx.db.query("receivingEvents").take(2_000),
+    ]);
+    const storageIds = new Set<string>();
+    for (const attachment of attachments) storageIds.add(attachment.storageId);
+    for (const transaction of transactions)
+      if (transaction.receiptStorageId)
+        storageIds.add(transaction.receiptStorageId);
+    for (const event of receivingEvents)
+      if (event.evidenceStorageId) storageIds.add(event.evidenceStorageId);
+    for (const storageId of storageIds)
+      await ctx.storage.delete(storageId as any);
+
+    const operationalTables = [
+      "cancellationItemOutcomes",
+      "purchaseAllocations",
+      "receiptConfirmations",
+      "receivingEvents",
+      "orderComments",
+      "statusEvents",
+      "assignmentEvents",
+      "notifications",
+      "changeRequests",
+      "exceptionRequests",
+      "cancellationRequests",
+      "attachments",
+      "purchaseTransactions",
+      "orderItems",
+      "orders",
+      "auditEvents",
+    ] as const;
+    const deleted: Record<string, number> = {};
+    for (const table of operationalTables) {
+      const rows = await ctx.db.query(table).take(2_000);
+      deleted[table] = rows.length;
+      for (const row of rows) await ctx.db.delete(row._id);
+    }
+    return { deleted, deletedStorageObjects: storageIds.size };
+  },
+});
+
 export const saveDepartment = mutationGeneric({
   args: {
     name: v.string(),
