@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/components/language-provider";
+import { UserManagement } from "@/components/user-management";
 
 const field = "h-11 w-full rounded-md border bg-background px-3";
 const receiving = [
@@ -54,6 +55,7 @@ export function ConfigurationWorkspace() {
           {message}
         </p>
       )}
+      <UserManagement />
       <section className="rounded-xl border p-5">
         <h3 className="font-semibold">
           {es ? "Políticas operativas" : "Operational policies"}

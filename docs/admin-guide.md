@@ -13,7 +13,11 @@ Roles are enforced by Convex, not by hidden buttons. Never use browser metadata 
 
 ## Invitations and users
 
-Invite users from Clerk; public registration must remain disabled. The verified Clerk webhook provisions invited accounts as requesters. Assign elevated visible roles only through an approved administrative procedure. Deactivation preserves historical records but blocks every protected backend call.
+Invite users from Clerk; public registration must remain disabled. In Purchasing Hub, open **Settings → Users and roles**, select **Open Clerk**, and send the invitation from Clerk. The verified Clerk webhook provisions accepted invitations as Requesters.
+
+After the user accepts and appears in **Users and roles**, choose the approved role, enter the business reason, and select **Save role**. Admins can assign Requester, Receptionist, and Purchasing Agent. Super Admins and the protected owner can assign any visible role. Users cannot modify themselves, and every role change is audited.
+
+Deactivation preserves historical records but blocks every protected backend call.
 
 The protected Overlord cannot be viewed, edited, assigned, or deactivated through ordinary administration. A configuration mismatch must be resolved through the protected deployment procedure.
 
