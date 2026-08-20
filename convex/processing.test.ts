@@ -382,4 +382,41 @@ describe("Phase 4 controlled processing", () => {
     );
     expect(audits.at(-2)?.reason).toMatch(/portal/);
   });
+
+  it("records multiple vendors and proofs against the same item", async () => {
+    const { t, orderId, itemA, itemB } = await seedProcessing();
+    await preparePurchasing(t, orderId, [itemA, itemB]);
+    const superAdmin = t.withIdentity({ subject: "super" });
+    for (const [vendor, amountMinor] of [
+      ["Vendor One", 2_500],
+      ["Vendor Two", 3_500],
+    ] as const) {
+      await superAdmin.mutation(api.processing.recordPurchase, {
+        orderId,
+        vendor,
+        purchasedAt: Date.now(),
+        amountMinor,
+        currency: "USD",
+        proofExceptionReason: `Test proof for ${vendor}`,
+        allocations: [{ itemId: itemA, quantity: 1, amountMinor }],
+      });
+    }
+    const workspace = await superAdmin.query(api.processing.workspace, {
+      orderId,
+    });
+    const itemPurchases = workspace.transactions.filter((transaction) =>
+      transaction.allocations.some((allocation) => allocation.itemId === itemA),
+    );
+    expect(itemPurchases.map((transaction) => transaction.vendor)).toEqual([
+      "Vendor One",
+      "Vendor Two",
+    ]);
+    expect(
+      itemPurchases.every(
+        (transaction) =>
+          transaction.allocations.length === 1 &&
+          transaction.allocations[0].itemId === itemA,
+      ),
+    ).toBe(true);
+  });
 });

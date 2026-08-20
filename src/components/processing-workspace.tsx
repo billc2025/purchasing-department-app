@@ -27,6 +27,8 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
       loading: "Loading processing workspace…",
       subtitle: "Complete the highlighted next step below.",
       nextStep: "Next step",
+      orderStatus: "Order status",
+      itemStatus: "Item status",
       itemsRemaining: "items still need review",
       readyToApprove:
         "All items are resolved and ready for purchasing approval.",
@@ -75,6 +77,11 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
       addComment: "Add comment",
       noComments: "No messages yet.",
       purchase: "Record purchase transaction",
+      addPurchase: "Add vendor purchase",
+      purchaseFor: "Purchase for",
+      remaining: "Still needed",
+      purchasedQuantity: "Quantity purchased from this vendor",
+      purchaseCost: "Actual cost from this vendor",
       vendor: "Vendor",
       purchaseDate: "Purchase date and time",
       receiptNumber: "Receipt number",
@@ -107,6 +114,8 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
       loading: "Cargando espacio de procesamiento…",
       subtitle: "Complete el siguiente paso resaltado abajo.",
       nextStep: "Siguiente paso",
+      orderStatus: "Estado del pedido",
+      itemStatus: "Estado del artículo",
       itemsRemaining: "artículos aún necesitan revisión",
       readyToApprove:
         "Todos los artículos están resueltos y listos para aprobar la compra.",
@@ -155,6 +164,11 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
       addComment: "Agregar comentario",
       noComments: "Aún no hay mensajes.",
       purchase: "Registrar transacción de compra",
+      addPurchase: "Agregar compra de proveedor",
+      purchaseFor: "Compra para",
+      remaining: "Cantidad pendiente",
+      purchasedQuantity: "Cantidad comprada a este proveedor",
+      purchaseCost: "Costo real de este proveedor",
       vendor: "Proveedor",
       purchaseDate: "Fecha y hora de compra",
       receiptNumber: "Número de recibo",
@@ -227,6 +241,7 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
     storageId: string;
     fileName: string;
   }>();
+  const [purchaseItemId, setPurchaseItemId] = useState<string>();
   const [allocations, setAllocations] = useState<
     Record<string, { quantity: string; amount: string }>
   >({});
@@ -385,6 +400,7 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
       });
       setReceipt(undefined);
       setAllocations({});
+      setPurchaseItemId(undefined);
     });
   }
 
@@ -397,6 +413,182 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
     (item) => !["approved", "substituted", "unavailable"].includes(item.status),
   );
   const reviewComplete = unresolvedItems.length === 0;
+  function openPurchaseFor(itemId: string) {
+    setPurchaseItemId(itemId);
+    setReceipt(undefined);
+    setAllocations({ [itemId]: { quantity: "", amount: "" } });
+    setPurchase({
+      vendor: "",
+      purchasedAt: localDateTimeNow(),
+      receiptNumber: "",
+      notes: "",
+      proofException: false,
+      proofExceptionReason: "",
+    });
+    setMessage("");
+  }
+
+  function purchaseFormFor(
+    item: NonNullable<typeof workspace>["items"][number],
+  ) {
+    const entry = allocations[item._id] ?? { quantity: "", amount: "" };
+    return (
+      <div className="mt-4 rounded-xl border-2 border-primary/20 bg-primary/5 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <h5 className="font-semibold">
+            {c.purchaseFor}: {item.name}
+          </h5>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setPurchaseItemId(undefined)}
+          >
+            {c.close}
+          </Button>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {c.remaining}:{" "}
+          {Math.max(0, item.quantity - (item.purchasedQuantity ?? 0))}{" "}
+          {item.unit}
+        </p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <label className="text-sm">
+            {c.vendor}
+            <input
+              className={field}
+              value={purchase.vendor}
+              onChange={(event) =>
+                setPurchase({ ...purchase, vendor: event.target.value })
+              }
+            />
+          </label>
+          <label className="text-sm">
+            {c.purchaseDate}
+            <input
+              type="datetime-local"
+              className={field}
+              value={purchase.purchasedAt}
+              onChange={(event) =>
+                setPurchase({ ...purchase, purchasedAt: event.target.value })
+              }
+            />
+          </label>
+          <label className="text-sm">
+            {c.purchasedQuantity}
+            <input
+              type="number"
+              min="0"
+              step="any"
+              className={field}
+              value={entry.quantity}
+              onChange={(event) =>
+                setAllocations({
+                  [item._id]: { ...entry, quantity: event.target.value },
+                })
+              }
+            />
+          </label>
+          <label className="text-sm">
+            {c.purchaseCost}
+            <input
+              inputMode="decimal"
+              className={field}
+              value={entry.amount}
+              onChange={(event) =>
+                setAllocations({
+                  [item._id]: { ...entry, amount: event.target.value },
+                })
+              }
+            />
+          </label>
+          <label className="text-sm">
+            {c.receiptNumber}
+            <input
+              className={field}
+              value={purchase.receiptNumber}
+              onChange={(event) =>
+                setPurchase({ ...purchase, receiptNumber: event.target.value })
+              }
+            />
+          </label>
+          <label className="text-sm sm:col-span-2">
+            {c.notes}
+            <textarea
+              className={field}
+              value={purchase.notes}
+              onChange={(event) =>
+                setPurchase({ ...purchase, notes: event.target.value })
+              }
+            />
+          </label>
+        </div>
+        <div className="mt-4 rounded-xl border border-dashed bg-background p-4">
+          <p className="font-medium">{c.receipt}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{c.receiptHelp}</p>
+          <label
+            className="mt-3 inline-flex cursor-pointer rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
+            htmlFor={`receipt-${item._id}`}
+          >
+            {receipt ? `${c.receiptReady}: ${receipt.fileName}` : c.receipt}
+          </label>
+          <input
+            id={`receipt-${item._id}`}
+            className="sr-only"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,application/pdf"
+            disabled={busy}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void uploadReceipt(file);
+              event.currentTarget.value = "";
+            }}
+          />
+        </div>
+        {workspace!.permissions.canUseProofException && (
+          <div className="mt-4 rounded-xl border bg-background p-4">
+            <label className="text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={purchase.proofException}
+                onChange={(event) =>
+                  setPurchase({
+                    ...purchase,
+                    proofException: event.target.checked,
+                  })
+                }
+              />{" "}
+              {c.proofException}
+            </label>
+            {purchase.proofException && (
+              <label className="mt-3 block text-sm">
+                {c.proofReason}
+                <textarea
+                  className={field}
+                  value={purchase.proofExceptionReason}
+                  onChange={(event) =>
+                    setPurchase({
+                      ...purchase,
+                      proofExceptionReason: event.target.value,
+                    })
+                  }
+                />
+              </label>
+            )}
+          </div>
+        )}
+        <p className="mt-4 font-medium">
+          {c.total}: {formatCurrency(transactionTotal, order.currency)}
+        </p>
+        <Button
+          className="mt-3 h-11 w-full sm:w-auto"
+          disabled={busy || !purchase.vendor.trim()}
+          onClick={() => void finalizePurchase()}
+        >
+          {c.finalize}
+        </Button>
+      </div>
+    );
+  }
   function itemActionsFor(
     item: NonNullable<typeof workspace>["items"][number],
   ) {
@@ -478,6 +670,9 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
           ].includes(order.status) && (
             <div className="mt-5 rounded-xl border-2 border-primary/30 bg-primary/5 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                {c.orderStatus}: {statusLabel(order.status)}
+              </p>
+              <p className="mt-1 text-xs font-medium text-muted-foreground">
                 {c.nextStep}
               </p>
               {order.status === "assigned" && (
@@ -571,7 +766,7 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
                   </p>
                 </div>
                 <span className="rounded-full bg-muted px-2.5 py-1 text-xs">
-                  {statusLabel(item.status)}
+                  {c.itemStatus}: {statusLabel(item.status)}
                 </span>
               </div>
               {item.substitutionDescription && (
@@ -611,6 +806,22 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
                   </label>
                 );
               })()}
+              {canRecordPurchase &&
+                ["ordered", "approved", "substituted", "purchased"].includes(
+                  item.status,
+                ) &&
+                (item.purchasedQuantity ?? 0) < item.quantity &&
+                purchaseItemId !== item._id && (
+                  <Button
+                    className="mt-3 h-11 w-full sm:w-auto"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => openPurchaseFor(item._id)}
+                  >
+                    {c.addPurchase}
+                  </Button>
+                )}
+              {purchaseItemId === item._id && purchaseFormFor(item)}
               {itemAction?.itemId === item._id && (
                 <div className="mt-4 rounded-lg bg-muted p-4">
                   {itemAction!.action === "substitution" && (
@@ -729,188 +940,6 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
           })}
         </div>
       </details>
-
-      {canRecordPurchase && (
-        <div className="rounded-2xl border bg-card p-5 sm:p-8">
-          <h3 className="font-semibold">{c.purchase}</h3>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <label className="text-sm">
-              {c.vendor}
-              <input
-                className={field}
-                value={purchase.vendor}
-                onChange={(event) =>
-                  setPurchase({ ...purchase, vendor: event.target.value })
-                }
-              />
-            </label>
-            <label className="text-sm">
-              {c.purchaseDate}
-              <input
-                type="datetime-local"
-                className={field}
-                value={purchase.purchasedAt}
-                onChange={(event) =>
-                  setPurchase({ ...purchase, purchasedAt: event.target.value })
-                }
-              />
-            </label>
-            <label className="text-sm">
-              {c.receiptNumber}
-              <input
-                className={field}
-                value={purchase.receiptNumber}
-                onChange={(event) =>
-                  setPurchase({
-                    ...purchase,
-                    receiptNumber: event.target.value,
-                  })
-                }
-              />
-            </label>
-            <label className="text-sm sm:col-span-2">
-              {c.notes}
-              <textarea
-                className={field}
-                value={purchase.notes}
-                onChange={(event) =>
-                  setPurchase({ ...purchase, notes: event.target.value })
-                }
-              />
-            </label>
-          </div>
-          <div className="mt-5 rounded-xl border border-dashed p-4">
-            <p className="font-medium">{c.receipt}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {c.receiptHelp}
-            </p>
-            <label
-              className="mt-3 inline-flex cursor-pointer rounded-md border bg-background px-4 py-2 text-sm font-medium hover:bg-muted"
-              htmlFor={`receipt-${orderId}`}
-            >
-              {receipt ? `${c.receiptReady}: ${receipt.fileName}` : c.receipt}
-            </label>
-            <input
-              id={`receipt-${orderId}`}
-              className="sr-only"
-              type="file"
-              accept="image/jpeg,image/png,image/webp,application/pdf"
-              disabled={busy}
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) void uploadReceipt(file);
-                event.currentTarget.value = "";
-              }}
-            />
-          </div>
-          <div className="mt-5">
-            <h4 className="font-medium">{c.allocation}</h4>
-            <div className="mt-3 space-y-3">
-              {workspace.items
-                .filter((item) =>
-                  ["ordered", "approved", "substituted"].includes(item.status),
-                )
-                .map((item) => {
-                  const entry = allocations[item._id] ?? {
-                    quantity: "",
-                    amount: "",
-                  };
-                  return (
-                    <div
-                      key={item._id}
-                      className="grid gap-3 rounded-xl border p-3 sm:grid-cols-[1fr_8rem_10rem] sm:items-end"
-                    >
-                      <div>
-                        <p className="font-medium">{item.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {c.qty}: {item.quantity} {item.unit}
-                        </p>
-                      </div>
-                      <label className="text-sm">
-                        {c.qty}
-                        <input
-                          type="number"
-                          min="0"
-                          step="any"
-                          className={field}
-                          value={entry.quantity}
-                          onChange={(event) =>
-                            setAllocations({
-                              ...allocations,
-                              [item._id]: {
-                                ...entry,
-                                quantity: event.target.value,
-                              },
-                            })
-                          }
-                        />
-                      </label>
-                      <label className="text-sm">
-                        {c.amount}
-                        <input
-                          inputMode="decimal"
-                          className={field}
-                          value={entry.amount}
-                          onChange={(event) =>
-                            setAllocations({
-                              ...allocations,
-                              [item._id]: {
-                                ...entry,
-                                amount: event.target.value,
-                              },
-                            })
-                          }
-                        />
-                      </label>
-                    </div>
-                  );
-                })}
-            </div>
-            <p className="mt-3 font-medium">
-              {c.total}: {formatCurrency(transactionTotal, order.currency)}
-            </p>
-          </div>
-          {workspace.permissions.canUseProofException && (
-            <div className="mt-5 rounded-xl border p-4">
-              <label className="text-sm font-medium">
-                <input
-                  type="checkbox"
-                  checked={purchase.proofException}
-                  onChange={(event) =>
-                    setPurchase({
-                      ...purchase,
-                      proofException: event.target.checked,
-                    })
-                  }
-                />{" "}
-                {c.proofException}
-              </label>
-              {purchase.proofException && (
-                <label className="mt-3 block text-sm">
-                  {c.proofReason}
-                  <textarea
-                    className={field}
-                    value={purchase.proofExceptionReason}
-                    onChange={(event) =>
-                      setPurchase({
-                        ...purchase,
-                        proofExceptionReason: event.target.value,
-                      })
-                    }
-                  />
-                </label>
-              )}
-            </div>
-          )}
-          <Button
-            className="mt-5"
-            disabled={busy || !purchase.vendor.trim()}
-            onClick={() => void finalizePurchase()}
-          >
-            {c.finalize}
-          </Button>
-        </div>
-      )}
 
       <details className="rounded-2xl border bg-card p-5 sm:p-8">
         <summary className="cursor-pointer list-none">
