@@ -8,8 +8,11 @@ export default function Home() {
   );
 
   return (
-    <main className="grid min-h-screen place-items-center bg-muted/30 px-6">
-      <section className="w-full max-w-2xl rounded-2xl border bg-card p-10 shadow-sm">
+    <main
+      id="main-content"
+      className="grid min-h-screen place-items-center bg-muted/30 px-4 sm:px-6"
+    >
+      <section className="w-full max-w-2xl rounded-2xl border bg-card p-6 shadow-sm sm:p-10">
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Internal purchasing
         </p>

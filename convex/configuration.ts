@@ -92,10 +92,13 @@ export const adminWorkspace = queryGeneric({
           ...cancellationOutcomes,
         ],
       },
-      budgetAllocations: allocations.map((allocation: any) => ({
-        ...allocation,
-        userId: actor.isProtectedPrincipal ? allocation.userId : undefined,
-      })),
+      budgetAllocations: allocations.map(
+        ({ createdBy, userId, ...allocation }: any) => ({
+          ...allocation,
+          createdBy: actor.isProtectedPrincipal ? createdBy : undefined,
+          userId: actor.isProtectedPrincipal ? userId : undefined,
+        }),
+      ),
       budgetEnforcementActive: false,
     };
   },
@@ -176,6 +179,15 @@ export const saveBudgetAllocation = mutationGeneric({
       throw new Error("A department is required");
     if (args.scopeType === "user" && !args.userId)
       throw new Error("A user is required");
+    if (args.userId) {
+      const target = await ctx.db.get(args.userId);
+      if (
+        !target ||
+        !target.isActive ||
+        (target.isProtectedPrincipal && !actor.isProtectedPrincipal)
+      )
+        throw new Error("User not found");
+    }
     if (
       args.scopeType === "event" &&
       !normalizeText(args.eventReference ?? "", 120)

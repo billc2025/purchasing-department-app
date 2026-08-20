@@ -340,6 +340,18 @@ export const detail = queryGeneric({
           : user.displayName;
     return {
       ...order,
+      requesterUserId:
+        requestedForUser?.isProtectedPrincipal && !viewerIsOverlord
+          ? undefined
+          : order.requesterUserId,
+      requestedForUserId:
+        requestedForUser?.isProtectedPrincipal && !viewerIsOverlord
+          ? undefined
+          : order.requestedForUserId,
+      createdByUserId:
+        createdByUser?.isProtectedPrincipal && !viewerIsOverlord
+          ? undefined
+          : order.createdByUserId,
       items,
       requestedForName: visibleUserName(requestedForUser),
       createdByName: visibleUserName(createdByUser),
@@ -426,6 +438,11 @@ export const attachReferenceImage = mutationGeneric({
       throw new Error("Draft not found");
     const metadata = await ctx.db.system.get(args.storageId);
     if (!metadata) throw new Error("Upload not found");
+    if (args.itemId) {
+      const item = await ctx.db.get(args.itemId);
+      if (!item || item.orderId !== order._id)
+        throw new Error("Order item not found");
+    }
     validateAttachment(metadata.contentType ?? "", metadata.size);
     const id = await ctx.db.insert("attachments", {
       orderId: args.orderId,

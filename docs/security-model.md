@@ -123,3 +123,7 @@ Phase 8 performs a function-by-function permission audit and adds regression tes
 - Audit retention/export access and financial record retention require organizational policy.
 - Final budget thresholds, edit cutoffs, and post-purchase cancellation authority must not be inferred.
 - Whether client references eventually come from a managed client directory or remain controlled snapshots requires a later business decision; Phase 2 must support the required snapshot without inventing accounts-receivable workflows.
+
+## Phase 8 audit result
+
+The function-by-function release audit found and fixed protected-name exposure in bucket hydration, protected internal-ID exposure in order/lifecycle DTOs, protected-ID targeting in budget planning, and missing order/item association validation during attachment finalization. Regression coverage is in `convex/security-hardening.test.ts`. No known role or record-access bypass remains; production release is still gated by the manual manipulation tests in `docs/release-checklist.md`.

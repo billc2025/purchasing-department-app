@@ -23,6 +23,8 @@ export function NotificationCenter() {
         variant="outline"
         size="icon"
         aria-label={language === "es" ? "Notificaciones" : "Notifications"}
+        aria-expanded={open}
+        aria-controls="notification-panel"
         onClick={() => setOpen((value) => !value)}
       >
         <Bell className="size-4" />
@@ -33,7 +35,12 @@ export function NotificationCenter() {
         )}
       </Button>
       {open && (
-        <section className="absolute right-0 z-50 mt-2 w-[min(24rem,calc(100vw-2rem))] rounded-xl border bg-background p-4 shadow-xl">
+        <section
+          id="notification-panel"
+          role="dialog"
+          aria-label={language === "es" ? "Notificaciones" : "Notifications"}
+          className="absolute right-0 z-50 mt-2 w-[min(24rem,calc(100vw-2rem))] rounded-xl border bg-background p-4 shadow-xl"
+        >
           <div className="flex items-center justify-between gap-3">
             <h2 className="font-semibold">
               {language === "es" ? "Notificaciones" : "Notifications"}

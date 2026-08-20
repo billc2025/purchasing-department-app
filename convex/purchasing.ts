@@ -59,7 +59,15 @@ export const listBucket = queryGeneric({
     const categoryById = new Map(
       categories.map((category) => [category._id, category.name]),
     );
-    const userById = new Map(users.map((user) => [user._id, user.displayName]));
+    const viewerIsOverlord = effectiveRole(actor) === "overlord";
+    const userById = new Map(
+      users.map((user) => [
+        user._id,
+        user.isProtectedPrincipal && !viewerIsOverlord
+          ? "System Administrator"
+          : user.displayName,
+      ]),
+    );
     const locationById = new Map(
       locations.map((location) => [location._id, location.name]),
     );

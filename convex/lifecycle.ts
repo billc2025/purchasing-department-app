@@ -93,6 +93,7 @@ export const workspace = queryGeneric({
       exceptions,
       cancellations,
       locations,
+      users,
     ] = await Promise.all([
       ctx.db
         .query("orderItems")
@@ -129,8 +130,14 @@ export const workspace = queryGeneric({
         )
         .collect(),
       ctx.db.query("locations").take(100),
+      ctx.db.query("users").take(100),
     ]);
     const role = effectiveRole(actor);
+    const protectedUserId = users.find(
+      (user: any) => user.isProtectedPrincipal,
+    )?._id;
+    const redactUserId = (userId: any) =>
+      role !== "overlord" && userId === protectedUserId ? undefined : userId;
     return {
       order: {
         id: order._id,
@@ -142,11 +149,37 @@ export const workspace = queryGeneric({
         currency: order.currency,
       },
       items,
-      receivingEvents: events,
-      confirmations,
-      changeRequests: changes,
-      exceptionRequests: exceptions,
-      cancellationRequests: cancellations,
+      receivingEvents: events.map(({ receiverUserId, ...event }: any) => ({
+        ...event,
+        receiverUserId: redactUserId(receiverUserId),
+      })),
+      confirmations: confirmations.map(
+        ({ confirmerUserId, ...confirmation }: any) => ({
+          ...confirmation,
+          confirmerUserId: redactUserId(confirmerUserId),
+        }),
+      ),
+      changeRequests: changes.map(
+        ({ requesterUserId, decisionMakerUserId, ...request }: any) => ({
+          ...request,
+          requesterUserId: redactUserId(requesterUserId),
+          decisionMakerUserId: redactUserId(decisionMakerUserId),
+        }),
+      ),
+      exceptionRequests: exceptions.map(
+        ({ requesterUserId, decisionMakerUserId, ...request }: any) => ({
+          ...request,
+          requesterUserId: redactUserId(requesterUserId),
+          decisionMakerUserId: redactUserId(decisionMakerUserId),
+        }),
+      ),
+      cancellationRequests: cancellations.map(
+        ({ requesterUserId, decisionMakerUserId, ...request }: any) => ({
+          ...request,
+          requesterUserId: redactUserId(requesterUserId),
+          decisionMakerUserId: redactUserId(decisionMakerUserId),
+        }),
+      ),
       locations: locations
         .filter((location) => location.isActive)
         .map((location) => ({

@@ -4,7 +4,7 @@ Purchasing Hub is an internal purchasing-request and fulfillment system for fewe
 
 Each order also records who ultimately bears its cost: the identified client is billed, or the organization absorbs it internally. This classification is required at order entry and protected from silent reclassification after submission.
 
-This repository contains the approved architecture, Phase 1 authentication/authorization foundation, Phase 2 order-entry workflow, Phase 3 real-time purchasing bucket, and Phase 4 processing/receipt workflow. The controlling specification is [`Purchasing_Hub_Codex_Build_Package.md`](Purchasing_Hub_Codex_Build_Package.md).
+This repository contains the completed Phase 0–8 implementation and release-hardening work. Production promotion remains gated by the manual journeys and external-service authorization documented in [`docs/release-checklist.md`](docs/release-checklist.md). The controlling specification is [`Purchasing_Hub_Codex_Build_Package.md`](Purchasing_Hub_Codex_Build_Package.md).
 
 ## Approved stack
 
@@ -19,7 +19,7 @@ This repository contains the approved architecture, Phase 1 authentication/autho
 | Tests                        | Vitest and Playwright                                          |
 | Delivery                     | GitHub Actions and Vercel                                      |
 
-Clerk, Convex, Zod, and Vitest are installed for Phase 1. Playwright remains a Phase 8 dependency. No Express API, PostgreSQL, Prisma, or parallel backend is planned.
+Clerk, Convex, Zod, Vitest, and Playwright are installed. No Express API, PostgreSQL, Prisma, or parallel backend is planned.
 
 ## Local setup outline
 
@@ -91,10 +91,15 @@ Only variables deliberately prefixed with `NEXT_PUBLIC_` may be exposed to the b
 - [`docs/status-transitions.md`](docs/status-transitions.md) — controlled order and item state machines
 - [`docs/security-model.md`](docs/security-model.md) — threat model, authorization, redaction, and tests
 - [`docs/implementation-roadmap.md`](docs/implementation-roadmap.md) — Phases 1–8 and dependencies
+- [`docs/deployment.md`](docs/deployment.md) — service setup, production deployment, backup, and rollback
+- [`docs/admin-guide.md`](docs/admin-guide.md) — roles, configuration, reporting, and operations
+- [`docs/user-guide.md`](docs/user-guide.md) — requester, purchasing, reception, and lifecycle usage
+- [`docs/release-checklist.md`](docs/release-checklist.md) — automated, manual, accessibility, and service gates
+- [`docs/release-report.md`](docs/release-report.md) — Phase 8 findings and production recommendation
 
 ## Current constraints
 
-- The Clerk development tenant and Convex development deployment are configured. Vercel and CI remain deferred.
+- The Clerk development tenant and Convex development deployment are configured. GitHub CI is defined; production Clerk/Convex and Vercel remain unverified release gates.
 - Production categories, budget thresholds, budget enforcement, cancellation authority after purchase, and edit cutoffs remain explicit configuration/future decisions.
 - The hidden Overlord is a server-resolved capability and must never appear in ordinary role/user APIs or client bundles.
 
