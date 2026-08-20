@@ -8,6 +8,7 @@ import {
   type AuthorizedUser,
 } from "./lib/authorization";
 import { normalizeText } from "./lib/orderValidation";
+import { notifyUser } from "./lib/notifications";
 
 const operationalRoles = [
   "receptionist",
@@ -106,6 +107,19 @@ async function transitionOrder(
     toStatus,
     reason,
   });
+  if (actor._id !== order.requestedForUserId)
+    await notifyUser(ctx, {
+      userId: order.requestedForUserId,
+      order,
+      type:
+        toStatus === "in_transit"
+          ? "in_transit"
+          : toStatus === "purchased"
+            ? "purchase_recorded"
+            : "status_changed",
+      message: `Order ${order.orderNumber} changed to ${toStatus.replaceAll("_", " ")}.`,
+      eventKey: `${command}:${now}`,
+    });
 }
 
 async function transitionItem(
@@ -339,6 +353,18 @@ export const addComment = mutationGeneric({
       entityId: commentId,
       newValues: { orderId: args.orderId, channel: args.channel },
     });
+    const recipient =
+      actor._id === order.requestedForUserId
+        ? order.assignedAgentId
+        : order.requestedForUserId;
+    if (recipient && args.channel === "shared")
+      await notifyUser(ctx, {
+        userId: recipient,
+        order,
+        type: "comment_attention",
+        message: `Order ${order.orderNumber} has a new shared comment.`,
+        eventKey: String(commentId),
+      });
     return commentId;
   },
 });
@@ -410,6 +436,13 @@ export const requestItemInformation = mutationGeneric({
       channel: "shared",
       body: question,
       createdAt: Date.now(),
+    });
+    await notifyUser(ctx, {
+      userId: order.requestedForUserId,
+      order,
+      type: "information_requested",
+      message: `Purchasing needs more information for order ${order.orderNumber}.`,
+      eventKey: String(item._id),
     });
     return { status: "information_needed" as const };
   },

@@ -9,13 +9,16 @@
  */
 
 import type * as configuration from "../configuration.js";
+import type * as crons from "../crons.js";
 import type * as http from "../http.js";
 import type * as lib_audit from "../lib/audit.js";
 import type * as lib_authorization from "../lib/authorization.js";
 import type * as lib_bucket from "../lib/bucket.js";
+import type * as lib_notifications from "../lib/notifications.js";
 import type * as lib_orderValidation from "../lib/orderValidation.js";
 import type * as lib_reporting from "../lib/reporting.js";
 import type * as lifecycle from "../lifecycle.js";
+import type * as notifications from "../notifications.js";
 import type * as orders from "../orders.js";
 import type * as processing from "../processing.js";
 import type * as purchasing from "../purchasing.js";
@@ -30,13 +33,16 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   configuration: typeof configuration;
+  crons: typeof crons;
   http: typeof http;
   "lib/audit": typeof lib_audit;
   "lib/authorization": typeof lib_authorization;
   "lib/bucket": typeof lib_bucket;
+  "lib/notifications": typeof lib_notifications;
   "lib/orderValidation": typeof lib_orderValidation;
   "lib/reporting": typeof lib_reporting;
   lifecycle: typeof lifecycle;
+  notifications: typeof notifications;
   orders: typeof orders;
   processing: typeof processing;
   purchasing: typeof purchasing;

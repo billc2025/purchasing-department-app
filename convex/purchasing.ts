@@ -1,6 +1,7 @@
 import { mutationGeneric, queryGeneric } from "convex/server";
 import { ConvexError, v } from "convex/values";
 import { appendAuditEvent } from "./lib/audit";
+import { notifyUser } from "./lib/notifications";
 import {
   effectiveRole,
   requireActiveUser,
@@ -178,6 +179,13 @@ export const claim = mutationGeneric({
       entityType: "order",
       entityId: args.orderId,
       newValues: { assignedAgentId: actor._id, status: "assigned" },
+    });
+    await notifyUser(ctx, {
+      userId: order.requestedForUserId,
+      order,
+      type: "order_assigned",
+      message: `Order ${order.orderNumber} was assigned to purchasing.`,
+      eventKey: String(now),
     });
     return { status: "assigned" as const, assignedAgentId: actor._id };
   },

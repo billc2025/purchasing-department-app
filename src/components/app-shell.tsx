@@ -19,13 +19,22 @@ import { OrderDetail } from "@/components/order-detail";
 import { PurchasingBucket } from "@/components/purchasing-bucket";
 import { ReportsDashboard } from "@/components/reports-dashboard";
 import { ReportsErrorBoundary } from "@/components/reports-error-boundary";
+import { NotificationCenter } from "@/components/notification-center";
+import { ConfigurationWorkspace } from "@/components/configuration-workspace";
 import {
   LanguageProvider,
   LanguageSelector,
   useLanguage,
 } from "@/components/language-provider";
 
-type View = "dashboard" | "new" | "mine" | "detail" | "purchasing" | "reports";
+type View =
+  | "dashboard"
+  | "new"
+  | "mine"
+  | "detail"
+  | "purchasing"
+  | "reports"
+  | "settings";
 
 function Workspace({ view, orderId }: { view: View; orderId?: string }) {
   const profile = useQuery(api.users.current);
@@ -48,13 +57,13 @@ function WorkspaceContent({
     canAccessSystemControl: boolean;
     canViewPurchasingBucket: boolean;
     canViewReports: boolean;
+    canManageConfiguration: boolean;
   };
   view: View;
   orderId?: string;
 }) {
   const seed = useMutation(api.configuration.seedDevelopmentExamples);
   const resetOrders = useMutation(api.configuration.resetDevelopmentOrders);
-  const notifications = useQuery(api.lifecycle.myNotifications);
   const { t, language } = useLanguage();
   const [resetPhrase, setResetPhrase] = useState("");
   const [resetBusy, setResetBusy] = useState(false);
@@ -112,6 +121,14 @@ function WorkspaceContent({
                 {language === "es" ? "Reportes" : "Reports"}
               </Link>
             )}
+            {profile.canManageConfiguration && (
+              <Link
+                className="rounded-md px-3 py-2 hover:bg-muted"
+                href="/app/settings"
+              >
+                {language === "es" ? "Configuración" : "Settings"}
+              </Link>
+            )}
             <Link
               className="rounded-md px-3 py-2 hover:bg-muted"
               href="/app/orders"
@@ -125,30 +142,11 @@ function WorkspaceContent({
               {t("newOrder")}
             </Link>
           </nav>
+          <NotificationCenter />
           <LanguageSelector />
           <UserButton />
         </div>
       </header>
-      {notifications && notifications.length > 0 && (
-        <aside className="mt-5 rounded-xl border-2 border-primary/30 bg-primary/5 p-4">
-          <p className="text-sm font-semibold">
-            {notifications.length === 1
-              ? "An order requires your confirmation"
-              : `${notifications.length} orders require your confirmation`}
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {notifications.map((notification) => (
-              <Link
-                key={notification._id}
-                className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
-                href={`/app/orders/${notification.orderId}`}
-              >
-                {notification.message}
-              </Link>
-            ))}
-          </div>
-        </aside>
-      )}
       <section className="py-8">
         {view === "new" && <OrderEntry />}
         {view === "mine" && <MyOrders />}
@@ -167,6 +165,14 @@ function WorkspaceContent({
                   ? "Su función no tiene acceso a los reportes administrativos."
                   : "Your role does not have access to administrative reports."
               }
+            />
+          ))}
+        {view === "settings" &&
+          (profile.canManageConfiguration ? (
+            <ConfigurationWorkspace />
+          ) : (
+            <StateCard
+              title={language === "es" ? "Acceso denegado" : "Access denied"}
             />
           ))}
         {view === "dashboard" && (

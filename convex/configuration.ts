@@ -4,6 +4,211 @@ import { appendAuditEvent } from "./lib/audit";
 import { normalizeText } from "./lib/orderValidation";
 import { requireActiveUser, requireRole } from "./lib/authorization";
 
+const receivingStatuses = [
+  "purchasing",
+  "purchased",
+  "in_transit",
+  "partially_fulfilled",
+] as const;
+const cancellationOutcomes = [
+  "returned",
+  "refunded",
+  "retained",
+  "non_refundable",
+] as const;
+
+async function activeSetting(ctx: any, key: string) {
+  return ctx.db
+    .query("systemSettings")
+    .withIndex("by_key_active", (q: any) =>
+      q.eq("key", key).eq("isActive", true),
+    )
+    .unique();
+}
+
+async function replaceSetting(ctx: any, actor: any, key: string, value: any) {
+  const prior = await activeSetting(ctx, key);
+  if (prior) await ctx.db.patch(prior._id, { isActive: false });
+  const now = Date.now();
+  const id = await ctx.db.insert("systemSettings", {
+    key,
+    version: (prior?.version ?? 0) + 1,
+    value,
+    isActive: true,
+    createdBy: actor._id,
+    createdAt: now,
+  });
+  await appendAuditEvent(ctx, actor, {
+    action: "configuration.policy_updated",
+    entityType: "system_setting",
+    entityId: key,
+    priorValues: prior?.value,
+    newValues: value,
+  });
+  return id;
+}
+
+export const adminWorkspace = queryGeneric({
+  args: {},
+  handler: async (ctx) => {
+    const actor = requireRole(await requireActiveUser(ctx), [
+      "admin",
+      "super_admin",
+    ]);
+    const [
+      categories,
+      rules,
+      departments,
+      locations,
+      allocations,
+      cutoff,
+      statuses,
+      outcomes,
+    ] = await Promise.all([
+      ctx.db.query("categories").take(200),
+      ctx.db.query("categoryRules").take(300),
+      ctx.db.query("departments").take(200),
+      ctx.db.query("locations").take(200),
+      ctx.db.query("budgetAllocations").take(200),
+      activeSetting(ctx, "material_change_cutoff_minutes"),
+      activeSetting(ctx, "receptionist_receiving_statuses"),
+      activeSetting(ctx, "cancellation_outcomes"),
+    ]);
+    return {
+      categories: categories.map((category: any) => ({
+        ...category,
+        rule: rules.find(
+          (rule: any) => rule.categoryId === category._id && rule.isActive,
+        ),
+      })),
+      departments,
+      locations,
+      policies: {
+        editCutoffMinutes: cutoff?.value?.minutes ?? 30,
+        receptionistStatuses: statuses?.value?.statuses ?? [
+          ...receivingStatuses,
+        ],
+        cancellationOutcomes: outcomes?.value?.outcomes ?? [
+          ...cancellationOutcomes,
+        ],
+      },
+      budgetAllocations: allocations.map((allocation: any) => ({
+        ...allocation,
+        userId: actor.isProtectedPrincipal ? allocation.userId : undefined,
+      })),
+      budgetEnforcementActive: false,
+    };
+  },
+});
+
+export const savePolicies = mutationGeneric({
+  args: {
+    editCutoffMinutes: v.number(),
+    receptionistStatuses: v.array(v.string()),
+    cancellationOutcomes: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const actor = requireRole(await requireActiveUser(ctx), [
+      "admin",
+      "super_admin",
+    ]);
+    if (
+      !Number.isInteger(args.editCutoffMinutes) ||
+      args.editCutoffMinutes < 0 ||
+      args.editCutoffMinutes > 10080
+    )
+      throw new Error(
+        "Edit cutoff must be a whole number from 0 to 10080 minutes",
+      );
+    if (
+      !args.receptionistStatuses.length ||
+      args.receptionistStatuses.some(
+        (value) => !receivingStatuses.includes(value as any),
+      )
+    )
+      throw new Error("Select at least one permitted receptionist status");
+    if (
+      !args.cancellationOutcomes.length ||
+      args.cancellationOutcomes.some(
+        (value) => !cancellationOutcomes.includes(value as any),
+      )
+    )
+      throw new Error("Select at least one permitted cancellation outcome");
+    await replaceSetting(ctx, actor, "material_change_cutoff_minutes", {
+      minutes: args.editCutoffMinutes,
+    });
+    await replaceSetting(ctx, actor, "receptionist_receiving_statuses", {
+      statuses: [...new Set(args.receptionistStatuses)],
+    });
+    await replaceSetting(ctx, actor, "cancellation_outcomes", {
+      outcomes: [...new Set(args.cancellationOutcomes)],
+    });
+    return null;
+  },
+});
+
+export const saveBudgetAllocation = mutationGeneric({
+  args: {
+    scopeType: v.union(
+      v.literal("department"),
+      v.literal("user"),
+      v.literal("event"),
+      v.literal("general"),
+    ),
+    name: v.string(),
+    departmentId: v.optional(v.id("departments")),
+    userId: v.optional(v.id("users")),
+    eventReference: v.optional(v.string()),
+    amountMinor: v.number(),
+    currency: v.string(),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const actor = requireRole(await requireActiveUser(ctx), [
+      "admin",
+      "super_admin",
+    ]);
+    const name = normalizeText(args.name, 120);
+    if (!name) throw new Error("Allocation name is required");
+    if (!Number.isInteger(args.amountMinor) || args.amountMinor < 0)
+      throw new Error("Allocation amount is invalid");
+    if (args.scopeType === "department" && !args.departmentId)
+      throw new Error("A department is required");
+    if (args.scopeType === "user" && !args.userId)
+      throw new Error("A user is required");
+    if (
+      args.scopeType === "event" &&
+      !normalizeText(args.eventReference ?? "", 120)
+    )
+      throw new Error("An event reference is required");
+    const now = Date.now();
+    const id = await ctx.db.insert("budgetAllocations", {
+      ...args,
+      name,
+      eventReference:
+        normalizeText(args.eventReference ?? "", 120) || undefined,
+      notes: normalizeText(args.notes ?? "", 500) || undefined,
+      currency: normalizeText(args.currency, 3).toUpperCase(),
+      isActive: true,
+      enforcementActive: false,
+      createdBy: actor._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await appendAuditEvent(ctx, actor, {
+      action: "budget_allocation.created_inactive",
+      entityType: "budget_allocation",
+      entityId: String(id),
+      newValues: {
+        scopeType: args.scopeType,
+        amountMinor: args.amountMinor,
+        enforcementActive: false,
+      },
+    });
+    return id;
+  },
+});
+
 export const listOrderOptions = queryGeneric({
   args: {},
   handler: async (ctx) => {

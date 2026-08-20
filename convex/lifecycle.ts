@@ -1,6 +1,7 @@
 import { mutationGeneric, queryGeneric } from "convex/server";
 import { v } from "convex/values";
 import { appendAuditEvent } from "./lib/audit";
+import { notifyUser } from "./lib/notifications";
 import { effectiveRole, requireActiveUser } from "./lib/authorization";
 import { normalizeText } from "./lib/orderValidation";
 
@@ -226,6 +227,24 @@ export const recordReceipt = mutationGeneric({
     if (!order || !item || item.orderId !== order._id)
       throw new Error("Order item not found");
     if (!canReceive(actor, order)) throw new Error("Access denied");
+    if (effectiveRole(actor) === "receptionist") {
+      const setting = await ctx.db
+        .query("systemSettings")
+        .withIndex("by_key_active", (q: any) =>
+          q.eq("key", "receptionist_receiving_statuses").eq("isActive", true),
+        )
+        .unique();
+      const allowed = setting?.value?.statuses ?? [
+        "purchasing",
+        "purchased",
+        "in_transit",
+        "partially_fulfilled",
+      ];
+      if (!allowed.includes(order.status))
+        throw new Error(
+          "Reception is not permitted to receive this order status",
+        );
+    }
     if (!location?.isActive)
       throw new Error("Receiving location is unavailable");
     if (
@@ -310,15 +329,14 @@ export const recordReceipt = mutationGeneric({
       );
     const orderStatus = allReceived ? "received" : "partially_fulfilled";
     await statusEvent(ctx, actor, order, "derive_from_receipt", orderStatus);
-    if (allReceived) {
-      await ctx.db.insert("notifications", {
+    if (allReceived)
+      await notifyUser(ctx, {
         userId: order.requestedForUserId,
-        orderId: order._id,
+        order,
         type: "confirmation_required",
         message: `Order ${order.orderNumber} was received and requires confirmation.`,
-        createdAt: now,
+        eventKey: `received:${now}`,
       });
-    }
     return { itemStatus, orderStatus };
   },
 });
@@ -373,6 +391,15 @@ export const confirmReceipt = mutationGeneric({
       undefined,
       overrideReason ?? details,
     );
+    if (order.assignedAgentId)
+      await notifyUser(ctx, {
+        userId: order.assignedAgentId,
+        order,
+        type:
+          args.outcome === "correct" ? "receipt_confirmed" : "receipt_issue",
+        message: `Order ${order.orderNumber} receipt was ${args.outcome === "correct" ? "confirmed" : "reported with an issue"}.`,
+        eventKey: `confirmation:${Date.now()}`,
+      });
     return { status: nextStatus };
   },
 });
@@ -578,6 +605,13 @@ export const decideLateException = mutationGeneric({
       undefined,
       reason,
     );
+    await notifyUser(ctx, {
+      userId: order.requestedForUserId,
+      order,
+      type: "exception_decided",
+      message: `The deadline exception for ${order.orderNumber} was ${args.approve ? "approved" : "rejected"}.`,
+      eventKey: String(requestId),
+    });
     return { requestId, status: args.approve ? "unassigned" : "rejected" };
   },
 });
@@ -758,6 +792,20 @@ export const decideCancellation = mutationGeneric({
     const reason = required(args.reason, "Decision reason");
     const now = Date.now();
     if (args.approve) {
+      const configured = await ctx.db
+        .query("systemSettings")
+        .withIndex("by_key_active", (q: any) =>
+          q.eq("key", "cancellation_outcomes").eq("isActive", true),
+        )
+        .unique();
+      const allowed = configured?.value?.outcomes ?? [
+        "returned",
+        "refunded",
+        "retained",
+        "non_refundable",
+      ];
+      if (args.outcomes.some((outcome) => !allowed.includes(outcome.outcome)))
+        throw new Error("A cancellation outcome is disabled by policy");
       for (const outcome of args.outcomes) {
         if (!purchasedItems.some((item: any) => item._id === outcome.itemId))
           throw new Error("Cancellation outcome item is invalid");
@@ -815,6 +863,13 @@ export const decideCancellation = mutationGeneric({
       undefined,
       reason,
     );
+    await notifyUser(ctx, {
+      userId: order.requestedForUserId,
+      order,
+      type: "cancellation",
+      message: `Cancellation for ${order.orderNumber} was ${args.approve ? "approved" : "rejected"}.`,
+      eventKey: String(request._id),
+    });
     return { status: args.approve ? "cancelled" : request.priorStatus };
   },
 });

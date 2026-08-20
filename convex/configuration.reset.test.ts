@@ -97,6 +97,8 @@ describe("development order reset", () => {
         orderId,
         type: "confirmation_required",
         message: "Test",
+        link: `/app/orders/${orderId}`,
+        dedupeKey: `${orderId}:confirmation_required:test`,
         createdAt: now,
       });
       await ctx.db.insert("auditEvents", {

@@ -1,6 +1,7 @@
 import { mutationGeneric, queryGeneric } from "convex/server";
 import { v } from "convex/values";
 import { appendAuditEvent } from "./lib/audit";
+import { notifyOperationalRoles } from "./lib/notifications";
 import { effectiveRole, requireActiveUser } from "./lib/authorization";
 import {
   computeLeadTime,
@@ -253,6 +254,15 @@ export const submit = mutationGeneric({
         isLate: timing.isLate,
         billingResponsibility: order.billingResponsibility,
       },
+    });
+    await notifyOperationalRoles(ctx, {
+      order: { ...order, _id: args.orderId, status },
+      type: "order_submitted",
+      message: `Order ${order.orderNumber} was submitted${timing.isLate ? " and needs a deadline exception decision" : ""}.`,
+      eventKey: String(now),
+      roles: timing.isLate
+        ? ["purchasing_agent", "super_admin", "overlord"]
+        : ["purchasing_agent", "admin", "super_admin", "overlord"],
     });
     return { status, isLate: timing.isLate };
   },

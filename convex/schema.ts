@@ -364,13 +364,42 @@ export default defineSchema({
   notifications: defineTable({
     userId: v.id("users"),
     orderId: v.id("orders"),
-    type: v.literal("confirmation_required"),
+    type: v.string(),
     message: v.string(),
+    link: v.string(),
+    dedupeKey: v.string(),
     readAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_user_created_at", ["userId", "createdAt"])
+    .index("by_user_dedupe", ["userId", "dedupeKey"])
     .index("by_order_created_at", ["orderId", "createdAt"]),
+
+  budgetAllocations: defineTable({
+    scopeType: v.union(
+      v.literal("department"),
+      v.literal("user"),
+      v.literal("event"),
+      v.literal("general"),
+    ),
+    name: v.string(),
+    departmentId: v.optional(v.id("departments")),
+    userId: v.optional(v.id("users")),
+    eventReference: v.optional(v.string()),
+    amountMinor: v.number(),
+    currency: v.string(),
+    periodStart: v.optional(v.number()),
+    periodEnd: v.optional(v.number()),
+    notes: v.optional(v.string()),
+    isActive: v.boolean(),
+    enforcementActive: v.literal(false),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_scope_active", ["scopeType", "isActive"])
+    .index("by_department_active", ["departmentId", "isActive"])
+    .index("by_user_active", ["userId", "isActive"]),
 
   statusEvents: defineTable({
     orderId: v.id("orders"),
