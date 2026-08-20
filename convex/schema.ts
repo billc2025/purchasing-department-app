@@ -198,6 +198,7 @@ export default defineSchema({
     displayOrder: v.number(),
     status: itemStatusValidator,
     purchasedQuantity: v.optional(v.number()),
+    receivedQuantity: v.optional(v.number()),
     actualAmountMinor: v.optional(v.number()),
     substitutionDescription: v.optional(v.string()),
     unavailableReason: v.optional(v.string()),
@@ -248,6 +249,128 @@ export default defineSchema({
     .index("by_transaction", ["transactionId"])
     .index("by_item", ["itemId"])
     .index("by_order", ["orderId"]),
+
+  receivingEvents: defineTable({
+    orderId: v.id("orders"),
+    itemId: v.id("orderItems"),
+    receiverUserId: v.id("users"),
+    receivedAt: v.number(),
+    locationId: v.id("locations"),
+    quantity: v.number(),
+    notes: v.optional(v.string()),
+    evidenceStorageId: v.optional(v.id("_storage")),
+    evidenceFileName: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_order_received_at", ["orderId", "receivedAt"])
+    .index("by_item_received_at", ["itemId", "receivedAt"])
+    .index("by_receiver_received_at", ["receiverUserId", "receivedAt"]),
+
+  receiptConfirmations: defineTable({
+    orderId: v.id("orders"),
+    confirmerUserId: v.id("users"),
+    outcome: v.union(
+      v.literal("correct"),
+      v.literal("missing"),
+      v.literal("incorrect"),
+      v.literal("damaged"),
+      v.literal("incomplete"),
+    ),
+    details: v.optional(v.string()),
+    isPrivilegedOverride: v.boolean(),
+    overrideReason: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_order_created_at", ["orderId", "createdAt"])
+    .index("by_requester_created_at", ["confirmerUserId", "createdAt"])
+    .index("by_outcome_created_at", ["outcome", "createdAt"]),
+
+  changeRequests: defineTable({
+    orderId: v.id("orders"),
+    requesterUserId: v.id("users"),
+    originalValues: v.any(),
+    requestedValues: v.any(),
+    reason: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected"),
+    ),
+    decisionMakerUserId: v.optional(v.id("users")),
+    decisionReason: v.optional(v.string()),
+    decidedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_order_created_at", ["orderId", "createdAt"])
+    .index("by_status_created_at", ["status", "createdAt"])
+    .index("by_requester_created_at", ["requesterUserId", "createdAt"]),
+
+  exceptionRequests: defineTable({
+    orderId: v.id("orders"),
+    type: v.union(v.literal("late"), v.literal("budget")),
+    triggerSnapshot: v.any(),
+    requesterUserId: v.id("users"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected"),
+    ),
+    decisionMakerUserId: v.optional(v.id("users")),
+    decisionReason: v.optional(v.string()),
+    decidedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_status_created_at", ["status", "createdAt"])
+    .index("by_order_type", ["orderId", "type"])
+    .index("by_decider_created_at", ["decisionMakerUserId", "createdAt"]),
+
+  cancellationRequests: defineTable({
+    orderId: v.id("orders"),
+    requesterUserId: v.id("users"),
+    priorStatus: orderStatusValidator,
+    reason: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected"),
+    ),
+    decisionMakerUserId: v.optional(v.id("users")),
+    decisionReason: v.optional(v.string()),
+    decidedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_order_created_at", ["orderId", "createdAt"])
+    .index("by_status_created_at", ["status", "createdAt"])
+    .index("by_requester_created_at", ["requesterUserId", "createdAt"]),
+
+  cancellationItemOutcomes: defineTable({
+    cancellationRequestId: v.id("cancellationRequests"),
+    orderId: v.id("orders"),
+    itemId: v.id("orderItems"),
+    outcome: v.union(
+      v.literal("returned"),
+      v.literal("refunded"),
+      v.literal("retained"),
+      v.literal("non_refundable"),
+    ),
+    amountMinor: v.optional(v.number()),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_request", ["cancellationRequestId"])
+    .index("by_order", ["orderId"])
+    .index("by_item", ["itemId"]),
+
+  notifications: defineTable({
+    userId: v.id("users"),
+    orderId: v.id("orders"),
+    type: v.literal("confirmation_required"),
+    message: v.string(),
+    readAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_user_created_at", ["userId", "createdAt"])
+    .index("by_order_created_at", ["orderId", "createdAt"]),
 
   statusEvents: defineTable({
     orderId: v.id("orders"),

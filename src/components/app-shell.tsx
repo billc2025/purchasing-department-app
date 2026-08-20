@@ -49,6 +49,7 @@ function WorkspaceContent({
   orderId?: string;
 }) {
   const seed = useMutation(api.configuration.seedDevelopmentExamples);
+  const notifications = useQuery(api.lifecycle.myNotifications);
   const { t } = useLanguage();
   return (
     <main className="mx-auto min-h-screen max-w-7xl px-4 py-6 sm:px-6">
@@ -94,6 +95,26 @@ function WorkspaceContent({
           <UserButton />
         </div>
       </header>
+      {notifications && notifications.length > 0 && (
+        <aside className="mt-5 rounded-xl border-2 border-primary/30 bg-primary/5 p-4">
+          <p className="text-sm font-semibold">
+            {notifications.length === 1
+              ? "An order requires your confirmation"
+              : `${notifications.length} orders require your confirmation`}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {notifications.map((notification) => (
+              <Link
+                key={notification._id}
+                className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
+                href={`/app/orders/${notification.orderId}`}
+              >
+                {notification.message}
+              </Link>
+            ))}
+          </div>
+        </aside>
+      )}
       <section className="py-8">
         {view === "new" && <OrderEntry />}
         {view === "mine" && <MyOrders />}

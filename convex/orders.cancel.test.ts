@@ -13,7 +13,7 @@ afterEach(() => {
 });
 
 describe("Overlord order cancellation", () => {
-  it("cancels an assigned order, clears assignment, and preserves an audit trail", async () => {
+  it("routes assigned cancellations formally, clears assignment, and preserves an audit trail", async () => {
     process.env.OVERLORD_CLERK_USER_ID = "overlord";
     const t = convexTest(schema, modules);
     const ids = await t.run(async (ctx) => {
@@ -102,12 +102,26 @@ describe("Overlord order cancellation", () => {
         }),
     ).rejects.toThrow(/Access denied/);
 
-    await t
-      .withIdentity({ subject: "overlord" })
-      .mutation(api.orders.cancelByOverlord, {
-        orderId: ids.orderId,
-        reason: "Pre-production testing",
-      });
+    await expect(
+      t
+        .withIdentity({ subject: "overlord" })
+        .mutation(api.orders.cancelByOverlord, {
+          orderId: ids.orderId,
+          reason: "Pre-production testing",
+        }),
+    ).rejects.toThrow(/formal cancellation workflow/);
+
+    const overlord = t.withIdentity({ subject: "overlord" });
+    const request = await overlord.mutation(api.lifecycle.requestCancellation, {
+      orderId: ids.orderId,
+      reason: "Pre-production testing",
+    });
+    await overlord.mutation(api.lifecycle.decideCancellation, {
+      cancellationRequestId: request.requestId!,
+      approve: true,
+      reason: "Approved for pre-production testing",
+      outcomes: [],
+    });
     const state = await t.run(async (ctx) => ({
       order: await ctx.db.get(ids.orderId),
       assignments: await ctx.db.query("assignmentEvents").collect(),
@@ -119,12 +133,12 @@ describe("Overlord order cancellation", () => {
     expect(state.assignments[0]).toMatchObject({
       action: "cleared_on_cancel",
       fromAgentId: ids.agentId,
-      reason: "Pre-production testing",
+      reason: "Approved for pre-production testing",
     });
-    expect(state.audits).toHaveLength(1);
-    expect(state.audits[0]).toMatchObject({
-      action: "order.cancelled_by_overlord",
-      reason: "Pre-production testing",
-    });
+    expect(
+      state.audits.some(
+        (event) => event.action === "order.approve_cancellation",
+      ),
+    ).toBe(true);
   });
 });

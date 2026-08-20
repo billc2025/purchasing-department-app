@@ -334,7 +334,8 @@ export const detail = queryGeneric({
       requestedForName: visibleUserName(requestedForUser),
       createdByName: visibleUserName(createdByUser),
       permissions: {
-        canOverlordCancel: viewerIsOverlord && order.status !== "cancelled",
+        canOverlordCancel:
+          viewerIsOverlord && ["draft", "unassigned"].includes(order.status),
       },
       attachments: attachments.map((file) => ({
         id: file._id,
@@ -356,6 +357,8 @@ export const cancelByOverlord = mutationGeneric({
     if (!order) throw new Error("Order not found");
     if (order.status === "cancelled")
       throw new Error("Order is already cancelled");
+    if (!["draft", "unassigned"].includes(order.status))
+      throw new Error("Use the formal cancellation workflow after assignment");
     const now = Date.now();
     await ctx.db.patch(args.orderId, {
       status: "cancelled",

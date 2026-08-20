@@ -58,6 +58,9 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
       dispatchOrder: "Send order for delivery",
       completionHelp:
         "Completion happens after receiving and requester confirmation.",
+      budgetOverage: "This order is over its approved budget.",
+      budgetReason: "Reason for budget-exception review",
+      routeBudget: "Send budget exception for approval",
       question: "Question for the requester",
       reason: "Reason",
       replacement: "Replacement details",
@@ -145,6 +148,9 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
       dispatchOrder: "Enviar pedido para entrega",
       completionHelp:
         "El pedido se completa después de la recepción y confirmación del solicitante.",
+      budgetOverage: "Este pedido supera el presupuesto aprobado.",
+      budgetReason: "Motivo para revisar la excepción de presupuesto",
+      routeBudget: "Enviar excepción de presupuesto para aprobación",
       question: "Pregunta para el solicitante",
       reason: "Motivo",
       replacement: "Detalles del reemplazo",
@@ -218,9 +224,11 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
     api.processing.generateReceiptUploadUrl,
   );
   const recordPurchase = useMutation(api.processing.recordPurchase);
+  const routeBudgetException = useMutation(api.lifecycle.routeBudgetException);
 
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [budgetReason, setBudgetReason] = useState("");
   const [itemAction, setItemAction] = useState<{
     itemId: string;
     action: ItemAction;
@@ -745,6 +753,36 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
                   </p>
                 </>
               )}
+            </div>
+          )}
+        {workspace.permissions.canProcess &&
+          workspace.summary.varianceMinor > 0 && (
+            <div className="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
+              <p className="font-medium">{c.budgetOverage}</p>
+              <label className="mt-3 block text-sm">
+                {c.budgetReason}
+                <textarea
+                  className={field}
+                  value={budgetReason}
+                  onChange={(event) => setBudgetReason(event.target.value)}
+                />
+              </label>
+              <Button
+                className="mt-3"
+                variant="outline"
+                disabled={busy || !budgetReason.trim()}
+                onClick={() =>
+                  void run(async () => {
+                    await routeBudgetException({
+                      orderId: orderId as never,
+                      reason: budgetReason,
+                    });
+                    setBudgetReason("");
+                  })
+                }
+              >
+                {c.routeBudget}
+              </Button>
             </div>
           )}
       </div>

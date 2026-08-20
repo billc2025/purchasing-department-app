@@ -7,6 +7,7 @@ import { api } from "../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/components/language-provider";
 import { ProcessingWorkspace } from "@/components/processing-workspace";
+import { LifecycleWorkspace } from "@/components/lifecycle-workspace";
 
 export function OrderDetail({ orderId }: { orderId: string }) {
   const order = useQuery(api.orders.detail, { orderId: orderId as never });
@@ -178,6 +179,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
           )}
         </div>
       </article>
+      <LifecycleWorkspace orderId={orderId} />
       <ProcessingWorkspace orderId={orderId} />
     </>
   );
