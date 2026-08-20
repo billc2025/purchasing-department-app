@@ -108,6 +108,58 @@ export const leadTimePreview = queryGeneric({
   },
 });
 
+export const editableDraft = queryGeneric({
+  args: { orderId: v.id("orders") },
+  handler: async (ctx, args) => {
+    const actor = await requireActiveUser(ctx);
+    const order = await ctx.db.get(args.orderId);
+    if (
+      !order ||
+      order.status !== "draft" ||
+      (order.createdByUserId !== actor._id &&
+        order.requestedForUserId !== actor._id)
+    )
+      throw new Error("Draft not found");
+    const [items, attachments] = await Promise.all([
+      ctx.db
+        .query("orderItems")
+        .withIndex("by_order_display_order", (q: any) =>
+          q.eq("orderId", order._id),
+        )
+        .collect(),
+      ctx.db
+        .query("attachments")
+        .withIndex("by_order_status", (q: any) =>
+          q.eq("orderId", order._id).eq("status", "active"),
+        )
+        .collect(),
+    ]);
+    return {
+      order: {
+        requestedForUserId: order.requestedForUserId,
+        departmentId: order.departmentId,
+        billingResponsibility: order.billingResponsibility,
+        clientBillingReference: order.clientBillingReference,
+        billingNotes: order.billingNotes,
+        categoryId: order.categoryId,
+        purpose: order.purpose,
+        locationId: order.locationId,
+        deliveryInstructions: order.deliveryInstructions,
+        requiredAt: order.requiredAt,
+        displayTimezone: order.displayTimezone,
+        estimatedAmountMinor: order.estimatedAmountMinor,
+        currency: order.currency,
+        comments: order.comments,
+      },
+      items,
+      attachments: attachments.map((attachment: any) => ({
+        id: attachment._id,
+        fileName: attachment.fileName,
+      })),
+    };
+  },
+});
+
 export const saveDraft = mutationGeneric({
   args: draftArgs,
   handler: async (ctx, args) => {
@@ -237,7 +289,7 @@ export const submit = mutationGeneric({
       order.requiredAt,
       order.leadTimeMinutesSnapshot,
     );
-    const status = timing.isLate ? "exception_pending" : "unassigned";
+    const status = "pending_approval" as const;
     await ctx.db.patch(args.orderId, {
       status,
       submittedAt: now,
@@ -258,11 +310,9 @@ export const submit = mutationGeneric({
     await notifyOperationalRoles(ctx, {
       order: { ...order, _id: args.orderId, status },
       type: "order_submitted",
-      message: `Order ${order.orderNumber} was submitted${timing.isLate ? " and needs a deadline exception decision" : ""}.`,
+      message: `Order ${order.orderNumber} was submitted for approval${timing.isLate ? " with a late required-by date" : ""}.`,
       eventKey: String(now),
-      roles: timing.isLate
-        ? ["purchasing_agent", "super_admin", "overlord"]
-        : ["purchasing_agent", "admin", "super_admin", "overlord"],
+      roles: ["super_admin", "overlord"],
     });
     return { status, isLate: timing.isLate };
   },
@@ -356,6 +406,10 @@ export const detail = queryGeneric({
       requestedForName: visibleUserName(requestedForUser),
       createdByName: visibleUserName(createdByUser),
       permissions: {
+        canEditDraft:
+          order.status === "draft" &&
+          (order.createdByUserId === actor._id ||
+            order.requestedForUserId === actor._id),
         canOverlordCancel:
           viewerIsOverlord && ["draft", "unassigned"].includes(order.status),
       },

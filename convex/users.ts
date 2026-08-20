@@ -36,6 +36,7 @@ export const current = queryGeneric({
       canManageConfiguration: ["admin", "super_admin", "overlord"].includes(
         role,
       ),
+      canApproveOrders: ["super_admin", "overlord"].includes(role),
     };
   },
 });

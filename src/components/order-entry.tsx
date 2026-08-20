@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
 import { api } from "../../convex/_generated/api";
@@ -27,12 +27,13 @@ const emptyItem = (): Item => ({
 });
 const field = "mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm";
 
-export function OrderEntry() {
+export function OrderEntry({ initialOrderId }: { initialOrderId?: string }) {
   const { language, formatDate, t } = useLanguage();
   const c = {
     en: {
-      submittedException: "Submitted for exception review.",
-      submitted: "Order submitted successfully.",
+      submittedException:
+        "Submitted for director approval with a late-date warning.",
+      submitted: "Submitted for director approval.",
       draftSaved: "Draft saved.",
       unableSave: "Unable to save order",
       uploadFailed: "Image upload failed",
@@ -81,7 +82,7 @@ export function OrderEntry() {
       notSet: "Not set",
       orderComments: "Order comments",
       reviewHelp:
-        "The server recalculates lead-time compliance at submission. Late requests go to exception review.",
+        "The server recalculates lead-time compliance at submission. Purchasing will not see the order until a Super Admin or Overlord approves it.",
       back: "Back",
       saveDraft: "Save draft",
       continue: "Continue",
@@ -107,8 +108,9 @@ export function OrderEntry() {
         "We could not submit the order. Please review the information and try again.",
     },
     es: {
-      submittedException: "Enviado para revisión de excepción.",
-      submitted: "Pedido enviado correctamente.",
+      submittedException:
+        "Enviado para aprobación de dirección con advertencia de fecha tardía.",
+      submitted: "Enviado para aprobación de dirección.",
       draftSaved: "Borrador guardado.",
       unableSave: "No se pudo guardar el pedido",
       uploadFailed: "Falló la carga de la imagen",
@@ -157,7 +159,7 @@ export function OrderEntry() {
       notSet: "Sin definir",
       orderComments: "Comentarios del pedido",
       reviewHelp:
-        "El servidor vuelve a calcular el cumplimiento del plazo al enviar. Las solicitudes tardías pasan a revisión de excepción.",
+        "El servidor vuelve a calcular el plazo al enviar. Compras no verá el pedido hasta que un Superadministrador u Overlord lo apruebe.",
       back: "Atrás",
       saveDraft: "Guardar borrador",
       continue: "Continuar",
@@ -188,13 +190,17 @@ export function OrderEntry() {
   const router = useRouter();
   const options = useQuery(api.configuration.listOrderOptions);
   const users = useQuery(api.orders.eligibleRequestedForUsers);
+  const existingDraft = useQuery(
+    api.orders.editableDraft,
+    initialOrderId ? { orderId: initialOrderId as never } : "skip",
+  );
   const saveDraft = useMutation(api.orders.saveDraft);
   const submit = useMutation(api.orders.submit);
   const generateUploadUrl = useMutation(api.orders.generateUploadUrl);
   const attachReferenceImage = useMutation(api.orders.attachReferenceImage);
   const removeAttachment = useMutation(api.orders.removeAttachment);
   const [step, setStep] = useState(1);
-  const [orderId, setOrderId] = useState<string>();
+  const [orderId, setOrderId] = useState<string | undefined>(initialOrderId);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [submittingOrder, setSubmittingOrder] = useState(false);
@@ -220,6 +226,47 @@ export function OrderEntry() {
   const [attachments, setAttachments] = useState<
     Array<{ id: string; fileName: string }>
   >([]);
+  const initializedDraft = useRef(false);
+  useEffect(() => {
+    if (!existingDraft || initializedDraft.current) return;
+    initializedDraft.current = true;
+    const order = existingDraft.order;
+    const date = new Date(order.requiredAt);
+    const localRequiredAt = new Date(
+      date.getTime() - date.getTimezoneOffset() * 60_000,
+    )
+      .toISOString()
+      .slice(0, 16);
+    setForm({
+      requestedForUserId: order.requestedForUserId,
+      departmentId: order.departmentId ?? "",
+      billingResponsibility: order.billingResponsibility,
+      clientBillingReference: order.clientBillingReference ?? "",
+      billingNotes: order.billingNotes ?? "",
+      categoryId: order.categoryId,
+      purpose: order.purpose,
+      locationId: order.locationId,
+      deliveryInstructions: order.deliveryInstructions ?? "",
+      requiredAt: localRequiredAt,
+      displayTimezone: order.displayTimezone,
+      estimatedBudget: (order.estimatedAmountMinor / 100).toFixed(2),
+      currency: order.currency,
+      comments: order.comments ?? "",
+    });
+    setItems(
+      existingDraft.items.map((item) => ({
+        name: item.name,
+        specification: item.specification,
+        quantity: item.quantity,
+        unit: item.unit,
+        preferredVendor: item.preferredVendor,
+        estimatedAmount: (item.estimatedAmountMinor / 100).toFixed(2),
+        substitutionAllowed: item.substitutionAllowed,
+        notes: item.notes,
+      })),
+    );
+    setAttachments(existingDraft.attachments);
+  }, [existingDraft]);
   const leadTimePreview = useQuery(
     api.orders.leadTimePreview,
     form.categoryId ? { categoryId: form.categoryId as never } : "skip",

@@ -77,4 +77,17 @@ describe("purchasing bucket policy", () => {
     );
     expect(() => normalizeReason(" ")).toThrow(/reason/i);
   });
+
+  it("keeps orders awaiting approval out of every purchasing work view", () => {
+    const pending = { ...base, status: "pending_approval" };
+    for (const filter of [
+      "all_active",
+      "due_today",
+      "upcoming",
+      "overdue",
+    ] as const)
+      expect(
+        matchesBucketFilter(pending, filter, "agent", now, now - 1, now + 1),
+      ).toBe(false);
+  });
 });

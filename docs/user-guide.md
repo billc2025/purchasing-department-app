@@ -12,9 +12,11 @@ Purchasing Hub is invitation-only. Use the invitation email and sign in at the o
 4. Enter the budget for the entire order.
 5. Add each item with quantity, unit, specification, and estimated item cost.
 6. Add optional reference images. JPEG, PNG, and WebP files are accepted up to 8 MB.
-7. Review the order summary, save the draft, and submit when ready.
+7. Review the order summary, save the draft, and submit it for approval when ready.
 
-The lead-time message explains whether the required-by date is compliant. Late requests enter an exception decision instead of silently bypassing policy.
+The lead-time message explains whether the required-by date is compliant. Every submitted request waits for approval by a Super Admin or the protected system owner before purchasing can claim it. Late requests are clearly marked for the approver and cannot silently bypass policy.
+
+If an approver returns the request, open it from **My orders**, select **Edit and resubmit**, make the requested corrections, review it again, and submit it for a new decision. A rejected request is retained in history and does not enter purchasing.
 
 ## Follow an order
 

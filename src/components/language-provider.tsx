@@ -78,6 +78,8 @@ const copy = {
     actions: "Actions",
     unassigned: "Unassigned",
     draft: "Draft",
+    pendingApproval: "Pending approval",
+    editAndResubmit: "Edit and resubmit",
     assigned: "Assigned",
     inReview: "In review",
     approvedToPurchase: "Approved to purchase",
@@ -202,6 +204,8 @@ const copy = {
     actions: "Acciones",
     unassigned: "Sin asignar",
     draft: "Borrador",
+    pendingApproval: "Pendiente de aprobación",
+    editAndResubmit: "Editar y volver a enviar",
     assigned: "Asignado",
     inReview: "En revisión",
     approvedToPurchase: "Aprobado para comprar",
@@ -299,6 +303,7 @@ export function LanguageProvider({
         statusLabel: (status) => {
           const labels: Record<string, CopyKey> = {
             draft: "draft",
+            pending_approval: "pendingApproval",
             unassigned: "unassigned",
             assigned: "assigned",
             in_review: "inReview",

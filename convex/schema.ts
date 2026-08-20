@@ -11,6 +11,7 @@ export const visibleRoleValidator = v.union(
 
 export const orderStatusValidator = v.union(
   v.literal("draft"),
+  v.literal("pending_approval"),
   v.literal("unassigned"),
   v.literal("assigned"),
   v.literal("in_review"),
@@ -184,6 +185,21 @@ export default defineSchema({
   })
     .index("by_order_created_at", ["orderId", "createdAt"])
     .index("by_agent_created_at", ["toAgentId", "createdAt"]),
+
+  orderApprovalDecisions: defineTable({
+    orderId: v.id("orders"),
+    reviewerUserId: v.id("users"),
+    decision: v.union(
+      v.literal("approved"),
+      v.literal("returned"),
+      v.literal("rejected"),
+    ),
+    reason: v.string(),
+    wasLate: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_order_created_at", ["orderId", "createdAt"])
+    .index("by_reviewer_created_at", ["reviewerUserId", "createdAt"]),
 
   orderItems: defineTable({
     orderId: v.id("orders"),
