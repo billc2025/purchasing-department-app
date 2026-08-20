@@ -277,6 +277,9 @@ describe("Phase 4 controlled processing", () => {
       allocations: [{ itemId: itemA, quantity: 1, amountMinor: 3_000 }],
     });
     expect(partial.status).toBe("partially_fulfilled");
+    await expect(
+      agent.mutation(api.processing.dispatchOrder, { orderId }),
+    ).rejects.toThrow(/partially fulfilled/);
     const complete = await superAdmin.mutation(api.processing.recordPurchase, {
       orderId,
       vendor: "Supply Co",
@@ -322,10 +325,7 @@ describe("Phase 4 controlled processing", () => {
         (event) => event.action === "purchase.finalized_with_proof_exception",
       ),
     ).toBe(true);
-    await agent.mutation(api.processing.dispatchItem, { itemId: itemA });
-    const firstDispatchOrder = await t.run((ctx) => ctx.db.get(orderId));
-    expect(firstDispatchOrder?.status).toBe("purchased");
-    await agent.mutation(api.processing.dispatchItem, { itemId: itemB });
+    await agent.mutation(api.processing.dispatchOrder, { orderId });
     const dispatched = await t.run(async (ctx) => ({
       order: await ctx.db.get(orderId),
       items: await ctx.db

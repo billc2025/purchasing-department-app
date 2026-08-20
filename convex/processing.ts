@@ -878,3 +878,43 @@ export const dispatchItem = mutationGeneric({
     return { itemStatus: "in_transit" as const, orderStatus: order.status };
   },
 });
+
+export const dispatchOrder = mutationGeneric({
+  args: { orderId: v.id("orders") },
+  handler: async (ctx, args) => {
+    const actor = await requireActiveUser(ctx);
+    const order = await ctx.db.get(args.orderId);
+    if (!order || order.status !== "purchased")
+      stateError("Order", order?.status);
+    requireAssignedAgent(actor, order);
+    const items = await ctx.db
+      .query("orderItems")
+      .withIndex("by_order_display_order", (query: any) =>
+        query.eq("orderId", order._id),
+      )
+      .collect();
+    const purchasedItems = items.filter(
+      (item: any) => (item.purchasedQuantity ?? 0) > 0,
+    );
+    if (
+      !purchasedItems.length ||
+      purchasedItems.some(
+        (item: any) =>
+          !["purchased", "substituted", "in_transit"].includes(item.status) ||
+          (item.purchasedQuantity ?? 0) < item.quantity,
+      )
+    ) {
+      throw new ConvexError({
+        code: "PURCHASE_INCOMPLETE",
+        message: "Every purchased item must be finalized before delivery",
+      });
+    }
+    for (const item of purchasedItems) {
+      if (item.status !== "in_transit") {
+        await transitionItem(ctx, actor, item, "dispatch", "in_transit");
+      }
+    }
+    await transitionOrder(ctx, actor, order, "dispatch", "in_transit");
+    return { status: "in_transit" as const };
+  },
+});

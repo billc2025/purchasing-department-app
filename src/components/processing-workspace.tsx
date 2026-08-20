@@ -16,6 +16,8 @@ function localDateTimeNow() {
 }
 
 type ItemAction = "information" | "unavailable" | "substitution";
+type ItemMenuAction =
+  ItemAction | "begin_review" | "approve" | "resume" | "dispatch";
 
 export function ProcessingWorkspace({ orderId }: { orderId: string }) {
   const { language, formatCurrency, formatDate, statusLabel } = useLanguage();
@@ -49,8 +51,11 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
       requestInfo: "Request information",
       unavailable: "Mark unavailable",
       substitute: "Record substitution",
-      moreActions: "Other item action…",
+      updateItemStatus: "Update item status…",
       dispatch: "Mark in transit",
+      dispatchOrder: "Send order for delivery",
+      completionHelp:
+        "Completion happens after receiving and requester confirmation.",
       question: "Question for the requester",
       reason: "Reason",
       replacement: "Replacement details",
@@ -126,8 +131,11 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
       requestInfo: "Solicitar información",
       unavailable: "Marcar no disponible",
       substitute: "Registrar sustitución",
-      moreActions: "Otra acción del artículo…",
+      updateItemStatus: "Actualizar estado del artículo…",
       dispatch: "Marcar en tránsito",
+      dispatchOrder: "Enviar pedido para entrega",
+      completionHelp:
+        "El pedido se completa después de la recepción y confirmación del solicitante.",
       question: "Pregunta para el solicitante",
       reason: "Motivo",
       replacement: "Detalles del reemplazo",
@@ -188,6 +196,7 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
   const markUnavailable = useMutation(api.processing.markUnavailable);
   const recordSubstitution = useMutation(api.processing.recordSubstitution);
   const dispatchItem = useMutation(api.processing.dispatchItem);
+  const dispatchOrder = useMutation(api.processing.dispatchOrder);
   const approveForPurchase = useMutation(api.processing.approveForPurchase);
   const beginPurchasing = useMutation(api.processing.beginPurchasing);
   const addComment = useMutation(api.processing.addComment);
@@ -293,6 +302,20 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
     });
   }
 
+  function selectItemAction(itemId: string, action: ItemMenuAction) {
+    if (action === "begin_review") {
+      void run(() => beginItemReview({ itemId: itemId as never }));
+    } else if (action === "approve") {
+      void run(() => approveItem({ itemId: itemId as never }));
+    } else if (action === "resume") {
+      void run(() => resumeItemReview({ itemId: itemId as never }));
+    } else if (action === "dispatch") {
+      void run(() => dispatchItem({ itemId: itemId as never }));
+    } else {
+      setItemAction({ itemId, action });
+    }
+  }
+
   async function postComment(channel: "shared" | "internal", body: string) {
     if (!body.trim()) return;
     await run(async () => {
@@ -374,6 +397,37 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
     (item) => !["approved", "substituted", "unavailable"].includes(item.status),
   );
   const reviewComplete = unresolvedItems.length === 0;
+  function itemActionsFor(
+    item: NonNullable<typeof workspace>["items"][number],
+  ) {
+    const actions: Array<{ value: ItemMenuAction; label: string }> = [];
+    if (!workspace!.permissions.canProcess) return actions;
+    if (order.status === "in_review" && item.status === "requested") {
+      actions.push({ value: "begin_review", label: c.beginReview });
+    }
+    if (order.status === "in_review" && item.status === "under_review") {
+      actions.push(
+        { value: "approve", label: c.approve },
+        { value: "information", label: c.requestInfo },
+        { value: "unavailable", label: c.unavailable },
+        { value: "substitution", label: c.substitute },
+      );
+    }
+    if (
+      order.status === "waiting_for_requester" &&
+      item.status === "information_needed"
+    ) {
+      actions.push({ value: "resume", label: c.resumeReview });
+    }
+    if (
+      ["purchased", "partially_fulfilled"].includes(order.status) &&
+      ["purchased", "substituted"].includes(item.status) &&
+      (item.purchasedQuantity ?? 0) > 0
+    ) {
+      actions.push({ value: "dispatch", label: c.dispatch });
+    }
+    return actions;
+  }
 
   return (
     <section className="mx-auto mt-6 max-w-4xl space-y-6">
@@ -478,7 +532,23 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
                 <p className="mt-2 font-medium">{c.recordPurchaseNext}</p>
               )}
               {order.status === "purchased" && (
-                <p className="mt-2 font-medium">{c.dispatchNext}</p>
+                <>
+                  <p className="mt-2 font-medium">{c.dispatchNext}</p>
+                  <Button
+                    className="mt-3 h-11 w-full sm:w-auto"
+                    disabled={busy}
+                    onClick={() =>
+                      void run(() =>
+                        dispatchOrder({ orderId: orderId as never }),
+                      )
+                    }
+                  >
+                    {c.dispatchOrder}
+                  </Button>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {c.completionHelp}
+                  </p>
+                </>
               )}
             </div>
           )}
@@ -512,83 +582,35 @@ export function ProcessingWorkspace({ orderId }: { orderId: string }) {
                   {item.unavailableReason}
                 </p>
               )}
-              {workspace.permissions.canProcess && (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {order.status === "in_review" &&
-                    item.status === "requested" && (
-                      <Button
-                        className="h-10 w-full sm:w-auto"
-                        disabled={busy}
-                        onClick={() =>
-                          void run(() => beginItemReview({ itemId: item._id }))
-                        }
-                      >
-                        {c.beginReview}
-                      </Button>
-                    )}
-                  {order.status === "in_review" &&
-                    item.status === "under_review" && (
-                      <>
-                        <Button
-                          className="h-10 flex-1 sm:flex-none"
-                          disabled={busy}
-                          onClick={() =>
-                            void run(() => approveItem({ itemId: item._id }))
-                          }
-                        >
-                          {c.approve}
-                        </Button>
-                        <label className="flex-1 sm:flex-none">
-                          <span className="sr-only">{c.moreActions}</span>
-                          <select
-                            aria-label={c.moreActions}
-                            className="h-10 w-full rounded-md border bg-background px-3 text-sm sm:w-auto"
-                            value=""
-                            onChange={(event) => {
-                              if (!event.target.value) return;
-                              setItemAction({
-                                itemId: item._id,
-                                action: event.target.value as ItemAction,
-                              });
-                            }}
-                          >
-                            <option value="">{c.moreActions}</option>
-                            <option value="information">{c.requestInfo}</option>
-                            <option value="unavailable">{c.unavailable}</option>
-                            <option value="substitution">{c.substitute}</option>
-                          </select>
-                        </label>
-                      </>
-                    )}
-                  {order.status === "waiting_for_requester" &&
-                    item.status === "information_needed" && (
-                      <Button
-                        size="sm"
-                        disabled={busy}
-                        onClick={() =>
-                          void run(() => resumeItemReview({ itemId: item._id }))
-                        }
-                      >
-                        {c.resumeReview}
-                      </Button>
-                    )}
-                  {["purchased", "partially_fulfilled"].includes(
-                    order.status,
-                  ) &&
-                    ["purchased", "substituted"].includes(item.status) &&
-                    (item.purchasedQuantity ?? 0) > 0 && (
-                      <Button
-                        size="sm"
-                        disabled={busy}
-                        onClick={() =>
-                          void run(() => dispatchItem({ itemId: item._id }))
-                        }
-                      >
-                        {c.dispatch}
-                      </Button>
-                    )}
-                </div>
-              )}
+              {(() => {
+                const actions = itemActionsFor(item);
+                if (!actions.length) return null;
+                return (
+                  <label className="mt-4 block text-sm">
+                    <span className="sr-only">{c.updateItemStatus}</span>
+                    <select
+                      aria-label={`${c.updateItemStatus} — ${item.name}`}
+                      className="h-11 w-full rounded-md border bg-background px-3 text-sm"
+                      value=""
+                      disabled={busy}
+                      onChange={(event) => {
+                        if (!event.target.value) return;
+                        selectItemAction(
+                          item._id,
+                          event.target.value as ItemMenuAction,
+                        );
+                      }}
+                    >
+                      <option value="">{c.updateItemStatus}</option>
+                      {actions.map((action) => (
+                        <option key={action.value} value={action.value}>
+                          {action.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                );
+              })()}
               {itemAction?.itemId === item._id && (
                 <div className="mt-4 rounded-lg bg-muted p-4">
                   {itemAction!.action === "substitution" && (
